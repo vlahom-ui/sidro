@@ -22,8 +22,15 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
    - Novi Cloudflare Turnstile site/secret key za sidroapp.com
    - Novu Resend API key + verificiranu domenu sidroapp.com
 3. Primijeniti migracije iz `supabase/migrations/` na Supabase projekt
-   (`supabase db push` ili kroz Dashboard SQL editor, redom `0001_init.sql`
-   pa `0002_admin_notifications.sql`).
+   (`supabase db push` ili kroz Dashboard SQL editor), redom:
+   `0001_init.sql` → `0002_security_fixes.sql` → `0003_drop_old_rate_limit_fn.sql`
+   → `0004_admin_notifications.sql`. `0002` i `0003` odražavaju sigurnosni
+   popravak koji je već ručno primijenjen na produkcijskoj `sidro` Supabase
+   bazi (search_path hardening na trigger funkcijama + `check_and_increment_rate_limit`
+   sada koristi `auth.uid()` interno umjesto `p_user_id` parametra koji je
+   pozivatelj mogao proizvoljno postaviti — vidi `lib/rateLimit.ts`, koji
+   zato MORA primiti klijent sa sesijom korisnika, ne admin/service-role
+   klijent, jer bi potonji uvijek dobio "authentication required" grešku).
 4. U Supabase Auth postavkama omogućiti Turnstile captcha zaštitu (koristi se
    na loginu preko `captchaToken`; registracija dodatno verificira token
    server-side u `/api/auth/register`).

@@ -26,7 +26,7 @@ export async function POST(
   const venue = await assertVenueOwner(supabase, venueId, user.id);
   if (!venue) return NextResponse.json({ error: "Nije pronađeno." }, { status: 404 });
 
-  const allowed = await checkRateLimit(user.id, "upload", RATE_LIMITS.upload);
+  const allowed = await checkRateLimit(supabase, "upload", RATE_LIMITS.upload);
   if (!allowed) {
     return NextResponse.json({ error: "Previše zahtjeva. Pokušajte kasnije." }, { status: 429 });
   }

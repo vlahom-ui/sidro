@@ -1,19 +1,22 @@
 import "server-only";
-import { createAdminClient } from "@/lib/supabase/admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/database.types";
 
 /**
  * Provjerava i broji zahtjeve korisnika unutar fiksnog vremenskog prozora.
- * Koristi SQL funkciju check_and_increment_rate_limit (atomična, RLS-safe
- * jer se poziva service-role klijentom).
+ * Koristi SQL funkciju check_and_increment_rate_limit, koja interno uzima
+ * auth.uid() iz sesije pozivatelja (SECURITY DEFINER + auth.uid() provjera
+ * unutar funkcije) — zato MORA primiti klijent koji nosi korisnikovu
+ * sesiju/JWT (npr. iz lib/supabase/server.ts), nikad admin/service-role
+ * klijent, koji nema auth.uid() kontekst i uzrokovao bi da funkcija baci
+ * grešku "authentication required".
  */
 export async function checkRateLimit(
-  userId: string,
+  supabase: SupabaseClient<Database>,
   action: string,
   { windowSeconds, maxRequests }: { windowSeconds: number; maxRequests: number }
 ): Promise<boolean> {
-  const supabase = createAdminClient();
   const { data, error } = await supabase.rpc("check_and_increment_rate_limit", {
-    p_user_id: userId,
     p_action: action,
     p_window_seconds: windowSeconds,
     p_max_requests: maxRequests,

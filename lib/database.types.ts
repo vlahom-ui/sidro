@@ -219,7 +219,6 @@ export interface Database {
     Functions: {
       check_and_increment_rate_limit: {
         Args: {
-          p_user_id: string;
           p_action: string;
           p_window_seconds: number;
           p_max_requests: number;
