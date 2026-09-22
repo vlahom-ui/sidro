@@ -5,7 +5,18 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
 
 ## Postavljanje
 
-1. `npm install`
+1. `npm install` — **napomena o `xlsx`**: `package.json` sada forsira patchanu
+   SheetJS verziju s `cdn.sheetjs.com` (v0.20.3) umjesto ranjive npm-registry
+   verzije 0.18.5 (vidi CVE napomenu ispod). Taj CDN nije bio dostupan iz
+   sandboxed razvojnog okruženja u kojem je ova promjena napravljena, pa
+   `package-lock.json` u repou još uvijek odražava staru npm-registry
+   verziju. Prvi `npm install` (ili `npm ci`) na stroju/CI-u s normalnim
+   pristupom internetu će automatski dohvatiti ispravnu verziju s CDN-a i
+   osvježiti lockfile — potvrđeno da `npm ci` pokušava taj fetch, samo je u
+   ovom okruženju vraćen 403 zbog mrežne politike sandboxa, ne zbog
+   SheetJS-a. Ako install ikad pukne na `xlsx` koraku, pokrenite
+   `rm -rf node_modules package-lock.json && npm install` na mreži koja može
+   pristupiti cdn.sheetjs.com.
 2. Kopirati `.env.example` u `.env.local` i popuniti:
    - Novi, zaseban Supabase projekt (URL, anon key, service role key)
    - Novi Cloudflare Turnstile site/secret key za sidroapp.com
@@ -38,20 +49,26 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
 
 ## Poznata ograničenja / sljedeći koraci
 
-- Format naziva generirane datoteke (`lib/generate/filename.ts`) je best-effort
-  implementacija HOK redoslijeda (oblik objekta, adresa, oznaka objekta, broj
-  pohrane, vremenska oznaka) — brief navodi točan regex kao otvoreno pitanje.
+- Format naziva generirane datoteke (`lib/generate/filename.ts`) slijedi
+  HOK-ov referentni primjer (`TRG_ZAGREBACKA10_001_0001_20261001_0755.csv`):
+  oblik objekta i adresa se normaliziraju (hrvatski dijakritici transliterirani,
+  uppercase, samo `[A-Z0-9]`, adresa ograničena na 30 znakova), oznaka objekta
+  je 3-znamenkasta (trenutno uvijek redni broj objekta po vlasniku — podrška za
+  više poslovnica po objektu nije implementirana), broj pohrane je
+  `generated_files.version_number` na 4 znamenke, a vremenska oznaka je UTC
+  `generated_at`. Napomena: pravilo normalizacije ne skraćuje `oblik_objekta`
+  na kod poput "TRG" (npr. "Trgovina" → "TRGOVINA", ne "TRG") jer je to
+  slobodno tekstualno polje bez fiksnog popisa kodova — ako se želi točna
+  HOK kraticu, treba definirati mapping tablicu po vrsti djelatnosti. Ako
+  oblik/adresa nakon normalizacije daju prazan segment, koristi se
+  `NEPOZNATO` i upisuje se upozorenje u `audit_log`.
 - Zip-bomb zaštita za DOCX/XLSX oslanja se na 15 MB limit uploada + timeout
   parsiranja; nema dedicated zip-entry inspekcije prije raspakiravanja.
-- `xlsx` (SheetJS) paket na npm registryju ima poznate neriješene CVE-ove
-  (prototype pollution, ReDoS); SheetJS patcheve distribuira samo preko
-  vlastitog CDN-a (cdn.sheetjs.com), koji nije dostupan iz ovog razvojnog
-  okruženja. Rizik je ublažen limitom veličine uploada, whitelist provjerom
-  tipa i timeoutom parsiranja, ali prije produkcije razmotriti instalaciju
-  patchane verzije s cdn.sheetjs.com ili zamjenu biblioteke.
+- `xlsx` (SheetJS) — vidi napomenu o CDN override-u u koraku 1 postavljanja.
 - Ekstrakcija stavki iz nestrukturiranih izvora (PDF, DOCX, copy-paste, URL)
   koristi heurističko prepoznavanje redaka oblika "naziv ... cijena" —
   korisnik uvijek pregledava/ispravlja rezultat prije spremanja.
 - Dodavanje slika s URL-a (bulk scraping + fuzzy matching, `image_candidates`)
   nije implementirano u ovoj fazi.
-- Pravni tekstovi `/terms` i `/privacy` su placeholderi.
+- `/privacy` sadrži finalni tekst Politike privatnosti (Meridian 18 d.o.o.).
+  `/terms` je i dalje placeholder dok tekst Uvjeta korištenja ne stigne.

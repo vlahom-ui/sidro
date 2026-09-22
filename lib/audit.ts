@@ -5,7 +5,7 @@ export async function logAudit(entry: {
   userId?: string | null;
   venueId?: string | null;
   action: string;
-  outcome: "success" | "failure";
+  outcome: "success" | "failure" | "warning";
   details?: string;
 }) {
   const supabase = createAdminClient();

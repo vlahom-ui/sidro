@@ -60,7 +60,7 @@ export default async function VenueAuditPage({
                   <td className="py-2 pr-4">{ACTION_LABELS[e.action] ?? e.action}</td>
                   <td className="py-2 pr-4">
                     <span className={e.outcome === "success" ? "" : "text-alert"}>
-                      {e.outcome === "success" ? "uspjeh" : "neuspjeh"}
+                      {e.outcome === "success" ? "uspjeh" : e.outcome === "warning" ? "upozorenje" : "neuspjeh"}
                     </span>
                   </td>
                   <td className="py-2 opacity-70">{e.details ?? ""}</td>

@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { assertVenueOwner } from "@/lib/ownership";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { logAudit } from "@/lib/audit";
-import { buildFileName } from "@/lib/generate/filename";
+import { buildFileName, GENERATED_FILENAME_RE } from "@/lib/generate/filename";
 import {
   buildProizvodiCsv,
   buildProizvodiXml,
@@ -61,6 +61,7 @@ export async function POST(
   const generatedAt = new Date();
   const expiresAt = new Date(generatedAt.getTime() + EXPIRY_DAYS * 24 * 60 * 60 * 1000);
   const results: { tip: ItemTip; format: GeneratedFileFormat; fileUrl: string; versionNumber: number }[] = [];
+  const filenameWarnings = new Set<string>();
 
   for (const group of groups) {
     for (const format of ["csv", "xml"] as GeneratedFileFormat[]) {
@@ -84,7 +85,7 @@ export async function POST(
         .maybeSingle();
 
       const versionNumber = (previous?.version_number ?? 0) + 1;
-      const fileName = buildFileName({
+      const { fileName, warnings } = buildFileName({
         oblikObjekta: venue.oblik_objekta,
         adresa: venue.adresa,
         oznakaObjekta,
@@ -92,6 +93,11 @@ export async function POST(
         extension: format,
         generatedAt,
       });
+      warnings.forEach((w) => filenameWarnings.add(w));
+      if (!GENERATED_FILENAME_RE.test(fileName)) {
+        // Ne bi se smjelo dogoditi s obzirom na normalizaciju u buildFileName — sigurnosna mreža.
+        throw new Error(`Generirani naziv datoteke ne prolazi validaciju: ${fileName}`);
+      }
       const storagePath = `${venueId}/${fileName}`;
 
       const contentType = format === "csv" ? "text/csv; charset=utf-8" : "application/xml; charset=utf-8";
@@ -137,5 +143,15 @@ export async function POST(
     details: `${results.length} datoteka generirano`,
   });
 
-  return NextResponse.json({ files: results });
+  if (filenameWarnings.size > 0) {
+    await logAudit({
+      userId: user.id,
+      venueId,
+      action: "generate_files",
+      outcome: "warning",
+      details: `Nedostajući podaci za naziv datoteke: ${Array.from(filenameWarnings).join(" ")}`,
+    });
+  }
+
+  return NextResponse.json({ files: results, filenameWarnings: Array.from(filenameWarnings) });
 }
