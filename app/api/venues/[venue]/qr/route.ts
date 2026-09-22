@@ -27,7 +27,7 @@ export async function GET(
     return NextResponse.json({ error: "Nije pronađeno." }, { status: 404 });
   }
 
-  const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL}/c/${venue.slug}`;
+  const publicUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/c/${venue.slug}`;
   const disposition = download ? `attachment; filename="sidro-qr-${venue.slug}.${format}"` : "inline";
 
   if (format === "svg") {

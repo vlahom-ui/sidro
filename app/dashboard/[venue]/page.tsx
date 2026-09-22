@@ -48,7 +48,7 @@ export default async function VenueDetailPage({
     .select("id", { count: "exact", head: true })
     .eq("venue_id", venueId);
 
-  const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL}/c/${venue.slug}`;
+  const publicUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/c/${venue.slug}`;
 
   return (
     <main className="min-h-screen">
