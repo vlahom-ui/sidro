@@ -11,6 +11,8 @@ const ACTION_LABELS: Record<string, string> = {
   import_text: "Uvoz teksta",
   generate_files: "Generiranje cjenika",
   item_bulk_update: "Masovna izmjena stavki",
+  register: "Registracija",
+  email_confirm: "Potvrda emaila",
 };
 
 export default async function VenueAuditPage({
