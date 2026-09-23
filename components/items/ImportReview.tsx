@@ -22,9 +22,29 @@ export function ImportReview({
   const [rows, setRows] = useState<ReviewRow[]>(initialItems.map((i) => ({ ...i, include: true })));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bulkTip, setBulkTip] = useState<ReviewRow["tip"]>("proizvod");
+  const [bulkCijena, setBulkCijena] = useState("");
 
   function update(index: number, patch: Partial<ReviewRow>) {
     setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+  }
+
+  const selectedCount = rows.filter((r) => r.include).length;
+  const allSelected = rows.length > 0 && selectedCount === rows.length;
+
+  function toggleSelectAll(checked: boolean) {
+    setRows((prev) => prev.map((r) => ({ ...r, include: checked })));
+  }
+
+  function applyBulkTip() {
+    setRows((prev) => prev.map((r) => (r.include ? { ...r, tip: bulkTip } : r)));
+  }
+
+  function applyBulkCijena() {
+    const value = Number(bulkCijena.replace(",", "."));
+    if (!Number.isFinite(value) || value <= 0) return;
+    setRows((prev) => prev.map((r) => (r.include ? { ...r, cijena: value } : r)));
+    setBulkCijena("");
   }
 
   async function handleSave() {
@@ -77,6 +97,53 @@ export function ImportReview({
           nazive i cijene prije spremanja.
         </p>
       )}
+      <div className="flex items-center gap-2 text-sm border-b border-navy/10 pb-2">
+        <input
+          type="checkbox"
+          checked={allSelected}
+          onChange={(e) => toggleSelectAll(e.target.checked)}
+          aria-label="Odaberi sve"
+        />
+        <span className="opacity-70">
+          {allSelected ? "Odznači sve" : "Odaberi sve"} ({selectedCount}/{rows.length})
+        </span>
+      </div>
+
+      {selectedCount > 0 && (
+        <div className="flex flex-wrap items-center gap-2 text-sm bg-navy-light/40 rounded px-3 py-2">
+          <span className="opacity-70">Za {selectedCount} odabranih:</span>
+          <select
+            value={bulkTip}
+            onChange={(e) => setBulkTip(e.target.value as ReviewRow["tip"])}
+            className="border border-navy/30 rounded px-2 py-1 bg-transparent"
+          >
+            <option value="proizvod">Proizvod</option>
+            <option value="usluga">Usluga</option>
+          </select>
+          <button type="button" onClick={applyBulkTip} className="rounded px-3 py-1 border border-navy/30 font-bold">
+            Postavi tip
+          </button>
+          <span className="opacity-40">·</span>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="Cijena"
+            value={bulkCijena}
+            onChange={(e) => setBulkCijena(e.target.value)}
+            className="w-24 border border-navy/30 rounded px-2 py-1 bg-transparent"
+          />
+          <button
+            type="button"
+            onClick={applyBulkCijena}
+            disabled={!bulkCijena}
+            className="rounded px-3 py-1 border border-navy/30 font-bold disabled:opacity-50"
+          >
+            Postavi cijenu
+          </button>
+        </div>
+      )}
+
       <div className="max-h-96 overflow-y-auto flex flex-col gap-2">
         {rows.map((row, index) => (
           <div key={index} className="flex items-center gap-2 border border-navy/10 rounded px-3 py-2">

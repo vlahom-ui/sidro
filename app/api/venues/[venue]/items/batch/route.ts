@@ -43,7 +43,15 @@ export const POST = withErrorHandling(async (
   }));
 
   const { data: inserted, error } = await supabase.from("items").insert(rows).select();
-  if (error) return NextResponse.json({ error: "Spremanje nije uspjelo." }, { status: 500 });
+  if (error) {
+    console.error("items/batch insert nije uspio:", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    return NextResponse.json({ error: "Spremanje nije uspjelo." }, { status: 500 });
+  }
 
   await logAudit({
     userId: user.id,

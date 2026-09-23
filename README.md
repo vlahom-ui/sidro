@@ -25,6 +25,7 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
    (`supabase db push` ili kroz Dashboard SQL editor), redom:
    `0001_init.sql` → `0002_security_fixes.sql` → `0003_drop_old_rate_limit_fn.sql`
    → `0005_check_email_exists.sql` → `0006_email_has_account_case_insensitive.sql`
+   → `0007_price_history_trigger_security_definer.sql`
    → `0004_admin_notifications.sql` (0004 zahtijeva prvo deployanu edge
    funkciju — vidi korak 5 — pa je na produkciji primijenjen zadnji;
    numerički redoslijed 0004/0005/0006 ne utječe na ispravnost jer su
@@ -117,3 +118,12 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   hvata mrežne greške, vraćajući standardizirani `{ ok, data, error }` oblik
   — sprječava da forma ostane zaglavljena u "Spremanje..." stanju bez ikakve
   poruke korisniku kod pada API poziva.
+- `record_price_history()` trigger (na `items` insert/update) mora biti
+  `security definer` (vidi `0007_price_history_trigger_security_definer.sql`)
+  jer `price_history` ima RLS bez INSERT/UPDATE policy za autentificirane
+  korisnike — bez toga svaki upis u `items` (pojedinačni, uvoz, izmjena
+  cijene) pada s "sve ili ništa" rollbackom cijele izjave. Isti obrazac kao
+  `check_and_increment_rate_limit` nad `rate_limits`.
+- Pregled uvezenih stavki (`ImportReview`) ima bulk-edit traku: "odaberi
+  sve" checkbox u headeru, te za odabrane retke masovnu promjenu tipa
+  (Proizvod/Usluga) i/ili cijene odjednom.
