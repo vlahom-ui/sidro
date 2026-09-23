@@ -13,7 +13,12 @@ export default function LoginPage() {
         <Suspense>
           <LoginForm />
         </Suspense>
-        <p className="text-sm mt-6">
+        <p className="text-sm mt-4">
+          <Link href="/forgot-password" className="text-slate underline">
+            Zaboravili ste lozinku?
+          </Link>
+        </p>
+        <p className="text-sm mt-2">
           Nemate račun?{" "}
           <Link href="/register" className="text-slate underline">
             Registrirajte se
