@@ -13,6 +13,7 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.9",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.45.4",
     "fast-xml-parser": "^5.11.1",
@@ -21,11 +22,13 @@
     "next": "^16.3.6",
     "papaparse": "^5.4.1",
     "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^6.3.289",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "resend": "^4.0.1",
     "server-only": "^0.0.1",
+    "tesseract.js": "^7.0.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^3.23.8"
   },

@@ -10,10 +10,12 @@ interface ReviewRow extends ExtractedItem {
 export function ImportReview({
   venueId,
   initialItems,
+  usedOcr = false,
   onSaved,
 }: {
   venueId: string;
   initialItems: ExtractedItem[];
+  usedOcr?: boolean;
   onSaved: (count: number) => void;
 }) {
   const [rows, setRows] = useState<ReviewRow[]>(initialItems.map((i) => ({ ...i, include: true })));
@@ -65,6 +67,13 @@ export function ImportReview({
       <p className="text-sm opacity-70">
         Pregledajte i ispravite izvučene stavke prije spremanja u cjenik ({rows.length} stavki).
       </p>
+      {usedOcr && (
+        <p className="text-alert text-sm">
+          Stavke su prepoznate OCR-om (optičko prepoznavanje teksta iz slike stranice, ne izravno iz
+          PDF teksta). OCR je manje pouzdan od izravne ekstrakcije — molimo pažljivije provjerite
+          nazive i cijene prije spremanja.
+        </p>
+      )}
       <div className="max-h-96 overflow-y-auto flex flex-col gap-2">
         {rows.map((row, index) => (
           <div key={index} className="flex items-center gap-2 border border-navy/10 rounded px-3 py-2">

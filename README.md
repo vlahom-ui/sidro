@@ -87,5 +87,20 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   korisnik uvijek pregledava/ispravlja rezultat prije spremanja.
 - Dodavanje slika s URL-a (bulk scraping + fuzzy matching, `image_candidates`)
   nije implementirano u ovoj fazi.
+- **OCR fallback za PDF** (`lib/parsers/ocr.ts`): kad standardna tekst-ekstrakcija
+  ne nađe nijednu stavku (tipično print-ready PDF s tekstom pretvorenim u
+  krivulje/outline), automatski se pokreće rasterizacija (pdfjs-dist +
+  @napi-rs/canvas) + OCR (tesseract.js, jezici hrv+eng) nad do 20 stranica,
+  s per-page (15s) i ukupnim (45s) timeoutom te limitom rezolucije (2000px).
+  Jezični podaci (`lib/ocr-data/*.traineddata.gz`, ~3.7MB) su bundlani u
+  repo — OCR radi potpuno offline, bez mrežnog pristupa u runtimeu. Ruta
+  `/api/venues/[venue]/import/upload` ima `maxDuration = 60` (Vercel) i
+  `next.config.mjs` eksplicitno uključuje `lib/ocr-data/**` u serverless
+  bundle preko `outputFileTracingIncludes` (dinamički fs putevi se ne prate
+  automatski). Napomena: ove tri nove ovisnosti (`tesseract.js-core`,
+  `@napi-rs/canvas-linux-x64-gnu`, `pdfjs-dist`) zajedno dodaju ~115MB u
+  node_modules — Next.jev file-tracing bi trebao uključiti samo stvarno
+  korištene datoteke u konačni serverless bundle, ali vrijedi provjeriti
+  veličinu Vercel funkcije nakon prvog deploya (limit je 250MB unzipped).
 - `/privacy` sadrži finalni tekst Politike privatnosti (Meridian 18 d.o.o.).
   `/terms` je i dalje placeholder dok tekst Uvjeta korištenja ne stigne.

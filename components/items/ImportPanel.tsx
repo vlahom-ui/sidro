@@ -13,6 +13,7 @@ export function ImportPanel({ venueId }: { venueId: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [extracted, setExtracted] = useState<ExtractedItem[] | null>(null);
+  const [usedOcr, setUsedOcr] = useState(false);
 
   const [urls, setUrls] = useState(["", "", ""]);
   const [text, setText] = useState("");
@@ -37,6 +38,7 @@ export function ImportPanel({ venueId }: { venueId: string }) {
         setError(data.error ?? "Uvoz nije uspio.");
         return;
       }
+      setUsedOcr(Boolean(data.usedOcr));
       setExtracted(data.items);
     } finally {
       setLoading(false);
@@ -63,6 +65,7 @@ export function ImportPanel({ venueId }: { venueId: string }) {
         setError(data.error ?? "Uvoz nije uspio.");
         return;
       }
+      setUsedOcr(false);
       setExtracted(data.items);
     } finally {
       setLoading(false);
@@ -88,6 +91,7 @@ export function ImportPanel({ venueId }: { venueId: string }) {
         setError(data.error ?? "Uvoz nije uspio.");
         return;
       }
+      setUsedOcr(false);
       setExtracted(data.items);
     } finally {
       setLoading(false);
@@ -99,8 +103,10 @@ export function ImportPanel({ venueId }: { venueId: string }) {
       <ImportReview
         venueId={venueId}
         initialItems={extracted}
+        usedOcr={usedOcr}
         onSaved={(count) => {
           setExtracted(null);
+          setUsedOcr(false);
           setText("");
           setUrls(["", "", ""]);
           alert(`Spremljeno ${count} stavki.`);

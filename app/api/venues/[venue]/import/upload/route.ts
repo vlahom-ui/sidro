@@ -9,8 +9,13 @@ import {
 import { parseCsvItems, parseXlsxItems, parseXmlItems } from "@/lib/parsers/structured";
 import { extractItemsFromDocx, extractItemsFromPdf } from "@/lib/parsers/documents";
 import { extractItemsFromText } from "@/lib/parsers/heuristics";
+import { extractItemsFromPdfViaOcr } from "@/lib/parsers/ocr";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { logAudit } from "@/lib/audit";
+
+// OCR fallback (rasterizacija + Tesseract) može potrajati — dopusti rutu
+// dulje trajanje na Vercelu nego default. Bez efekta izvan Vercela.
+export const maxDuration = 60;
 
 export async function POST(
   request: Request,
@@ -105,13 +110,40 @@ export async function POST(
     items = sourceType === "csv" ? extractItemsFromText(buffer.toString("utf-8")) : [];
   }
 
+  // OCR fallback samo za PDF: standardna ekstrakcija ne pronalazi ništa
+  // najčešće kod print-ready PDF-ova s tekstom pretvorenim u krivulje —
+  // nema tekstualnih objekata za pasivnu ekstrakciju, samo vektorske putanje.
+  let usedOcr = false;
+  if (sourceType === "pdf" && items.length === 0) {
+    try {
+      const ocrResult = await extractItemsFromPdfViaOcr(buffer);
+      items = ocrResult.items;
+      usedOcr = ocrResult.usedOcr;
+      await logAudit({
+        userId: user.id,
+        venueId,
+        action: "import_upload",
+        outcome: usedOcr ? "success" : "warning",
+        details: `OCR fallback: ${ocrResult.pagesProcessed}/${ocrResult.pagesAttempted} stranica obrađeno, ${items.length} stavki`,
+      });
+    } catch (err) {
+      await logAudit({
+        userId: user.id,
+        venueId,
+        action: "import_upload",
+        outcome: "warning",
+        details: `OCR fallback nije uspio: ${err instanceof Error ? err.message : "nepoznata greška"}`,
+      });
+    }
+  }
+
   const { data: importSource } = await supabase
     .from("import_sources")
     .insert({
       venue_id: venueId,
       source_type: sourceType,
       status: items.length > 0 ? "izvučeno — čeka pregled" : "nema prepoznatih stavki",
-      method: "automatska ekstrakcija",
+      method: usedOcr ? "automatska ekstrakcija (OCR)" : "automatska ekstrakcija",
       item_count: items.length,
     })
     .select()
@@ -122,8 +154,8 @@ export async function POST(
     venueId,
     action: "import_upload",
     outcome: "success",
-    details: `${sourceType}: ${items.length} stavki`,
+    details: `${sourceType}: ${items.length} stavki${usedOcr ? " (OCR)" : ""}`,
   });
 
-  return NextResponse.json({ importSourceId: importSource?.id, items });
+  return NextResponse.json({ importSourceId: importSource?.id, items, usedOcr });
 }
