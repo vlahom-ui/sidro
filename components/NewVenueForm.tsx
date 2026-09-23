@@ -2,6 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { apiFetch } from "@/lib/apiFetch";
+import type { Database } from "@/lib/database.types";
+
+type Venue = Database["public"]["Tables"]["venues"]["Row"];
 
 const OBLICI_OBJEKTA = [
   "restoran",
@@ -29,15 +33,14 @@ export function NewVenueForm() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/venues", {
+      const { ok, data, error: apiError } = await apiFetch<{ venue: Venue }>("/api/venues", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ naziv, oblikObjekta, adresa, oib: oib || null }),
       });
-      const data = await res.json();
 
-      if (!res.ok) {
-        setError(data.error ?? "Greška.");
+      if (!ok || !data) {
+        setError(apiError ?? "Greška.");
         return;
       }
 

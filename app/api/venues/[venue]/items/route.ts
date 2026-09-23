@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { assertVenueOwner } from "@/lib/ownership";
 import { itemInputSchema } from "@/lib/itemSchema";
+import { withErrorHandling } from "@/lib/apiRoute";
 
-export async function POST(
+export const POST = withErrorHandling(async (
   request: Request,
   { params }: { params: Promise<{ venue: string }> }
-) {
+) => {
   const { venue: venueId } = await params;
   const supabase = await createClient();
   const {
@@ -49,4 +50,4 @@ export async function POST(
   }
 
   return NextResponse.json({ item });
-}
+});

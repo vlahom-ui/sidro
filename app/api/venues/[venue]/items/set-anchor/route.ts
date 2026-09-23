@@ -2,15 +2,16 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { assertVenueOwner } from "@/lib/ownership";
 import { logAudit } from "@/lib/audit";
+import { withErrorHandling } from "@/lib/apiRoute";
 
 /**
  * Masovno postavlja sidrenu_cijena = cijena za stavke kojima sidrena_cijena
  * još nije postavljena. Ne dira stavke koje su već ručno ispravljene.
  */
-export async function POST(
+export const POST = withErrorHandling(async (
   _request: Request,
   { params }: { params: Promise<{ venue: string }> }
-) {
+) => {
   const { venue: venueId } = await params;
   const supabase = await createClient();
   const {
@@ -49,4 +50,4 @@ export async function POST(
   });
 
   return NextResponse.json({ updated });
-}
+});

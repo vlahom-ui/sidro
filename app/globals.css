@@ -43,6 +43,18 @@ body {
   opacity: 0.9;
 }
 
+/* --sidro-alert je inače rezerviran isključivo za upozorenja/rokove, nikad
+   dekorativno — ova klasa je eksplicitna iznimka vlasnika proizvoda samo za
+   par gumba "Registracija"/"Prijava" na naslovnici, ne širiti drugdje. */
+.btn-alert {
+  background-color: var(--sidro-alert);
+  color: var(--sidro-navy-light);
+}
+
+.btn-alert:hover {
+  opacity: 0.9;
+}
+
 .text-alert {
   color: var(--sidro-alert);
 }

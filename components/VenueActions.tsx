@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { VenueStatus } from "@/lib/database.types";
+import { apiFetch } from "@/lib/apiFetch";
 
 export function VenueActions({ venueId, status }: { venueId: string; status: VenueStatus }) {
   const router = useRouter();
@@ -13,14 +14,13 @@ export function VenueActions({ venueId, status }: { venueId: string; status: Ven
     setError(null);
     setLoading("publish");
     try {
-      const res = await fetch(`/api/venues/${venueId}/publish`, {
+      const { ok, error: apiError } = await apiFetch(`/api/venues/${venueId}/publish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: status === "published" ? "draft" : "published" }),
       });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? "Greška.");
+      if (!ok) {
+        setError(apiError ?? "Greška.");
         return;
       }
       router.refresh();
@@ -33,10 +33,9 @@ export function VenueActions({ venueId, status }: { venueId: string; status: Ven
     setError(null);
     setLoading("generate");
     try {
-      const res = await fetch(`/api/venues/${venueId}/generate`, { method: "POST" });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? "Generiranje nije uspjelo.");
+      const { ok, error: apiError } = await apiFetch(`/api/venues/${venueId}/generate`, { method: "POST" });
+      if (!ok) {
+        setError(apiError ?? "Generiranje nije uspjelo.");
         return;
       }
       router.refresh();

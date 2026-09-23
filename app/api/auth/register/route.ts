@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { logAudit } from "@/lib/audit";
+import { withErrorHandling } from "@/lib/apiRoute";
 
 const POLICY_VERSION = "2026-09-22";
 
@@ -17,7 +18,7 @@ const bodySchema = z.object({
   consent: z.literal(true),
 });
 
-export async function POST(request: Request) {
+export const POST = withErrorHandling(async (request: Request) => {
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
 
@@ -95,4 +96,4 @@ export async function POST(request: Request) {
     ok: true,
     requiresEmailConfirmation: !data.session,
   });
-}
+});

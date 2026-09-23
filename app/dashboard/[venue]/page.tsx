@@ -61,7 +61,7 @@ export default async function VenueDetailPage({
               venue.status === "published" ? "bg-navy text-navy-light" : "border border-navy/30"
             }`}
           >
-            {venue.status === "published" ? "objavljeno" : "nacrt"}
+            {venue.status === "published" ? "objavljeno" : "Status: neobjavljeno"}
           </span>
         </div>
         <p className="text-sm opacity-70 mb-1">{venue.adresa}</p>

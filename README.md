@@ -102,5 +102,18 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   node_modules — Next.jev file-tracing bi trebao uključiti samo stvarno
   korištene datoteke u konačni serverless bundle, ali vrijedi provjeriti
   veličinu Vercel funkcije nakon prvog deploya (limit je 250MB unzipped).
-- `/privacy` sadrži finalni tekst Politike privatnosti (Meridian 18 d.o.o.).
-  `/terms` je i dalje placeholder dok tekst Uvjeta korištenja ne stigne.
+- `/privacy` i `/terms` sadrže finalni pravni tekst (Meridian 18 d.o.o.).
+- Heuristički parser (`lib/parsers/heuristics.ts`, `extractItemsFromText`)
+  prepoznaje i cijene bez decimala (npr. "35 €"), uz obavezan valutni
+  simbol/oznaku (€/eur/kn) za takve slučajeve — bez toga bi svaki broj na
+  kraju retka (količina, broj stranice...) lažno prošao kao cijena. Također
+  podržava jelovnike gdje su naziv (caps), opis i cijena na tri odvojena
+  retka, ne samo "naziv ... cijena" na istom retku.
+- Sve interne API rute (`app/api/**/route.ts`) omotane su `withErrorHandling`
+  helperom (`lib/apiRoute.ts`) koji svaku neuhvaćenu iznimku pretvara u
+  strukturiran `{ error: "..." }` JSON odgovor umjesto golog 500-a bez
+  tijela. Svi klijentski pozivi prema tim rutama idu kroz `apiFetch()`
+  helper (`lib/apiFetch.ts`) koji provjerava `response.ok` prije `.json()` i
+  hvata mrežne greške, vraćajući standardizirani `{ ok, data, error }` oblik
+  — sprječava da forma ostane zaglavljena u "Spremanje..." stanju bez ikakve
+  poruke korisniku kod pada API poziva.

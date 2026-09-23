@@ -12,15 +12,16 @@ import {
   buildUslugeXml,
 } from "@/lib/generate/files";
 import type { Database, GeneratedFileFormat, ItemTip } from "@/lib/database.types";
+import { withErrorHandling } from "@/lib/apiRoute";
 
 type Item = Database["public"]["Tables"]["items"]["Row"];
 
 const EXPIRY_DAYS = 30;
 
-export async function POST(
+export const POST = withErrorHandling(async (
   _request: Request,
   { params }: { params: Promise<{ venue: string }> }
-) {
+) => {
   const { venue: venueId } = await params;
   const supabase = await createClient();
   const {
@@ -154,4 +155,4 @@ export async function POST(
   }
 
   return NextResponse.json({ files: results, filenameWarnings: Array.from(filenameWarnings) });
-}
+});

@@ -38,7 +38,7 @@ export default async function DashboardPage() {
                         v.status === "published" ? "bg-navy text-navy-light" : "border border-navy/30"
                       }`}
                     >
-                      {v.status === "published" ? "objavljeno" : "nacrt"}
+                      {v.status === "published" ? "objavljeno" : "Neobjavljeno"}
                     </span>
                   </div>
                   <span className="text-sm opacity-70">{v.adresa}</span>

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Database } from "@/lib/database.types";
 import { ItemForm, type ItemFormValues } from "./ItemForm";
+import { apiFetch } from "@/lib/apiFetch";
 
 type Item = Database["public"]["Tables"]["items"]["Row"];
 
@@ -33,48 +34,58 @@ export function ItemsManager({ venueId, initialItems }: { venueId: string; initi
   const [editingId, setEditingId] = useState<string | null>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkMessage, setBulkMessage] = useState<string | null>(null);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   async function handleCreate(values: ItemFormValues) {
-    const res = await fetch(`/api/venues/${venueId}/items`, {
+    const { ok, data, error } = await apiFetch<{ item: Item }>(`/api/venues/${venueId}/items`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(toPayload(values)),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? "Greška.");
-    setItems((prev) => [data.item as Item, ...prev]);
+    if (!ok || !data) throw new Error(error ?? "Greška.");
+    setItems((prev) => [data.item, ...prev]);
     setAdding(false);
   }
 
   async function handleUpdate(itemId: string, values: ItemFormValues) {
-    const res = await fetch(`/api/items/${itemId}`, {
+    const { ok, data, error } = await apiFetch<{ item: Item }>(`/api/items/${itemId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(toPayload(values)),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? "Greška.");
-    setItems((prev) => prev.map((i) => (i.id === itemId ? (data.item as Item) : i)));
+    if (!ok || !data) throw new Error(error ?? "Greška.");
+    setItems((prev) => prev.map((i) => (i.id === itemId ? data.item : i)));
     setEditingId(null);
   }
 
   async function handleDelete(itemId: string) {
     if (!confirm("Obrisati ovu stavku?")) return;
-    const res = await fetch(`/api/items/${itemId}`, { method: "DELETE" });
-    if (res.ok) setItems((prev) => prev.filter((i) => i.id !== itemId));
+    setBulkMessage(null);
+    setBulkError(null);
+    const { ok, error } = await apiFetch(`/api/items/${itemId}`, { method: "DELETE" });
+    if (!ok) {
+      setBulkError(error ?? "Brisanje nije uspjelo.");
+      return;
+    }
+    setItems((prev) => prev.filter((i) => i.id !== itemId));
   }
 
   async function handleSetAnchor() {
     setBulkLoading(true);
     setBulkMessage(null);
+    setBulkError(null);
     try {
-      const res = await fetch(`/api/venues/${venueId}/items/set-anchor`, { method: "POST" });
-      const data = await res.json();
-      if (res.ok) {
-        setBulkMessage(`Sidrena cijena postavljena za ${data.updated} stavki.`);
-        router.refresh();
-        setItems((prev) => prev.map((i) => (i.sidrena_cijena === null ? { ...i, sidrena_cijena: i.cijena } : i)));
+      const { ok, data, error } = await apiFetch<{ updated: number }>(
+        `/api/venues/${venueId}/items/set-anchor`,
+        { method: "POST" }
+      );
+      if (!ok || !data) {
+        setBulkError(error ?? "Postavljanje sidrene cijene nije uspjelo.");
+        return;
       }
+      setBulkMessage(`Sidrena cijena postavljena za ${data.updated} stavki.`);
+      router.refresh();
+      setItems((prev) => prev.map((i) => (i.sidrena_cijena === null ? { ...i, sidrena_cijena: i.cijena } : i)));
     } finally {
       setBulkLoading(false);
     }
@@ -97,6 +108,7 @@ export function ItemsManager({ venueId, initialItems }: { venueId: string; initi
         </button>
       </div>
       {bulkMessage && <p className="text-sm">{bulkMessage}</p>}
+      {bulkError && <p className="text-alert text-sm">{bulkError}</p>}
 
       {adding && (
         <ItemForm submitLabel="Spremi stavku" onSubmit={handleCreate} onCancel={() => setAdding(false)} />

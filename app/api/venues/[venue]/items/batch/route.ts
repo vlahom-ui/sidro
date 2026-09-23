@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { assertVenueOwner } from "@/lib/ownership";
 import { logAudit } from "@/lib/audit";
+import { withErrorHandling } from "@/lib/apiRoute";
 
 const itemSchema = z.object({
   tip: z.enum(["proizvod", "usluga"]),
@@ -15,10 +16,10 @@ const bodySchema = z.object({
   items: z.array(itemSchema).min(1).max(2000),
 });
 
-export async function POST(
+export const POST = withErrorHandling(async (
   request: Request,
   { params }: { params: Promise<{ venue: string }> }
-) {
+) => {
   const { venue: venueId } = await params;
   const supabase = await createClient();
   const {
@@ -53,4 +54,4 @@ export async function POST(
   });
 
   return NextResponse.json({ items: inserted, count: inserted?.length ?? 0 });
-}
+});

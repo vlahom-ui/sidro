@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { createClient } from "@/lib/supabase/server";
+import { withErrorHandling } from "@/lib/apiRoute";
 
-export async function GET(
+export const GET = withErrorHandling(async (
   request: Request,
   { params }: { params: Promise<{ venue: string }> }
-) {
+) => {
   const { venue: venueId } = await params;
   const { searchParams } = new URL(request.url);
   const format = searchParams.get("format") === "svg" ? "svg" : "png";
@@ -41,4 +42,4 @@ export async function GET(
   return new NextResponse(new Uint8Array(buffer), {
     headers: { "Content-Type": "image/png", "Content-Disposition": disposition },
   });
-}
+});

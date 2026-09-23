@@ -6,10 +6,10 @@ export default function LandingPage() {
       <header className="px-4 py-6 flex items-center justify-between max-w-4xl mx-auto w-full">
         <span className="text-2xl lowercase font-bold text-navy">sidro</span>
         <nav className="flex gap-4 text-sm">
-          <Link href="/login" className="text-slate underline">
+          <Link href="/login" className="btn-primary rounded px-4 py-2 font-bold">
             Prijava
           </Link>
-          <Link href="/register" className="btn-primary rounded px-4 py-2 font-bold">
+          <Link href="/register" className="btn-alert rounded px-4 py-2 font-bold">
             Registracija
           </Link>
         </nav>

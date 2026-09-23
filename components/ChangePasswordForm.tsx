@@ -38,6 +38,8 @@ export function ChangePasswordForm({ email }: { email: string }) {
       setSuccess(true);
       setCurrentPassword("");
       setNewPassword("");
+    } catch {
+      setError("Došlo je do greške, pokušajte ponovno.");
     } finally {
       setLoading(false);
     }

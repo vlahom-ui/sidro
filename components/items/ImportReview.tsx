@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ExtractedItem } from "@/lib/parsers/heuristics";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface ReviewRow extends ExtractedItem {
   include: boolean;
@@ -35,21 +36,23 @@ export function ImportReview({
     }
     setSaving(true);
     try {
-      const res = await fetch(`/api/venues/${venueId}/items/batch`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: selected.map((r) => ({
-            tip: r.tip,
-            naziv: r.naziv.trim(),
-            cijena: r.cijena,
-            kategorija: r.kategorija ?? null,
-          })),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Spremanje nije uspjelo.");
+      const { ok, data, error: apiError } = await apiFetch<{ count: number }>(
+        `/api/venues/${venueId}/items/batch`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: selected.map((r) => ({
+              tip: r.tip,
+              naziv: r.naziv.trim(),
+              cijena: r.cijena,
+              kategorija: r.kategorija ?? null,
+            })),
+          }),
+        }
+      );
+      if (!ok || !data) {
+        setError(apiError ?? "Spremanje nije uspjelo.");
         return;
       }
       onSaved(data.count);

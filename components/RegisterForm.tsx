@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Turnstile } from "@/components/Turnstile";
+import { apiFetch } from "@/lib/apiFetch";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -30,15 +31,17 @@ export function RegisterForm() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, turnstileToken, consent: true }),
-      });
-      const data = await res.json();
+      const { ok, data, error: apiError } = await apiFetch<{ requiresEmailConfirmation: boolean }>(
+        "/api/auth/register",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, turnstileToken, consent: true }),
+        }
+      );
 
-      if (!res.ok) {
-        setError(data.error ?? "Registracija nije uspjela.");
+      if (!ok || !data) {
+        setError(apiError ?? "Registracija nije uspjela.");
         return;
       }
 
@@ -105,7 +108,7 @@ export function RegisterForm() {
       <Turnstile onToken={setTurnstileToken} />
 
       {error && <p className="text-alert text-sm">{error}</p>}
-      {info && <p className="text-sm">{info}</p>}
+      {info && <p className="text-alert text-sm">{info}</p>}
 
       <button type="submit" disabled={loading} className="btn-primary rounded px-4 py-2 font-bold disabled:opacity-50">
         {loading ? "Registracija..." : "Registriraj se"}

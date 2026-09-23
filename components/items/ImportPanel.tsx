@@ -4,6 +4,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ExtractedItem } from "@/lib/parsers/heuristics";
 import { ImportReview } from "./ImportReview";
+import { apiFetch } from "@/lib/apiFetch";
+
+interface ImportResult {
+  items: ExtractedItem[];
+  usedOcr?: boolean;
+}
 
 type Mode = "upload" | "url" | "tekst";
 
@@ -32,10 +38,12 @@ export function ImportPanel({ venueId }: { venueId: string }) {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch(`/api/venues/${venueId}/import/upload`, { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Uvoz nije uspio.");
+      const { ok, data, error: apiError } = await apiFetch<ImportResult>(
+        `/api/venues/${venueId}/import/upload`,
+        { method: "POST", body: formData }
+      );
+      if (!ok || !data) {
+        setError(apiError ?? "Uvoz nije uspio.");
         return;
       }
       setUsedOcr(Boolean(data.usedOcr));
@@ -55,14 +63,13 @@ export function ImportPanel({ venueId }: { venueId: string }) {
     }
     setLoading(true);
     try {
-      const res = await fetch(`/api/venues/${venueId}/import/url`, {
+      const { ok, data, error: apiError } = await apiFetch<ImportResult>(`/api/venues/${venueId}/import/url`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ urls: filledUrls }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Uvoz nije uspio.");
+      if (!ok || !data) {
+        setError(apiError ?? "Uvoz nije uspio.");
         return;
       }
       setUsedOcr(false);
@@ -81,14 +88,13 @@ export function ImportPanel({ venueId }: { venueId: string }) {
     }
     setLoading(true);
     try {
-      const res = await fetch(`/api/venues/${venueId}/import/text`, {
+      const { ok, data, error: apiError } = await apiFetch<ImportResult>(`/api/venues/${venueId}/import/text`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Uvoz nije uspio.");
+      if (!ok || !data) {
+        setError(apiError ?? "Uvoz nije uspio.");
         return;
       }
       setUsedOcr(false);

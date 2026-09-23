@@ -20,22 +20,26 @@ export function ResetPasswordForm() {
 
   useEffect(() => {
     async function exchange() {
-      const supabase = createClient();
-      const code = searchParams.get("code");
-      const tokenHash = searchParams.get("token_hash");
-      const type = searchParams.get("type") as EmailOtpType | null;
+      try {
+        const supabase = createClient();
+        const code = searchParams.get("code");
+        const tokenHash = searchParams.get("token_hash");
+        const type = searchParams.get("type") as EmailOtpType | null;
 
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        setExchangeState(error ? "invalid" : "ready");
-        return;
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          setExchangeState(error ? "invalid" : "ready");
+          return;
+        }
+        if (tokenHash && type) {
+          const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+          setExchangeState(error ? "invalid" : "ready");
+          return;
+        }
+        setExchangeState("invalid");
+      } catch {
+        setExchangeState("invalid");
       }
-      if (tokenHash && type) {
-        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
-        setExchangeState(error ? "invalid" : "ready");
-        return;
-      }
-      setExchangeState("invalid");
     }
     exchange();
     // Namjerno se pokreće samo jednom pri mountanju — code/token_hash se ne mijenjaju.
@@ -65,6 +69,8 @@ export function ResetPasswordForm() {
       }
       router.push("/dashboard");
       router.refresh();
+    } catch {
+      setError("Došlo je do greške, pokušajte ponovno.");
     } finally {
       setLoading(false);
     }

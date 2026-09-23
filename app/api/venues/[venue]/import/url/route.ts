@@ -7,15 +7,16 @@ import { extractItemsFromText, htmlToPlainText } from "@/lib/parsers/heuristics"
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { logAudit } from "@/lib/audit";
 import { MAX_EXTRACTED_ITEMS } from "@/lib/security/fileValidation";
+import { withErrorHandling } from "@/lib/apiRoute";
 
 const bodySchema = z.object({
   urls: z.array(z.string().url()).min(1).max(3),
 });
 
-export async function POST(
+export const POST = withErrorHandling(async (
   request: Request,
   { params }: { params: Promise<{ venue: string }> }
-) {
+) => {
   const { venue: venueId } = await params;
   const supabase = await createClient();
   const {
@@ -72,4 +73,4 @@ export async function POST(
   });
 
   return NextResponse.json({ importSourceId: importSource?.id, items: allItems, results });
-}
+});

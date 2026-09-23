@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
+import { withErrorHandling } from "@/lib/apiRoute";
 
 const bodySchema = z.object({ status: z.enum(["draft", "published"]) });
 
-export async function POST(
+export const POST = withErrorHandling(async (
   request: Request,
   { params }: { params: Promise<{ venue: string }> }
-) {
+) => {
   const { venue: venueId } = await params;
   const supabase = await createClient();
   const {
@@ -39,4 +40,4 @@ export async function POST(
   });
 
   return NextResponse.json({ venue });
-}
+});

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { slugify } from "@/lib/slug";
 import { logAudit } from "@/lib/audit";
+import { withErrorHandling } from "@/lib/apiRoute";
 
 const bodySchema = z.object({
   naziv: z.string().min(1).max(200),
@@ -12,7 +13,7 @@ const bodySchema = z.object({
   oib: z.string().max(20).optional().nullable(),
 });
 
-export async function POST(request: Request) {
+export const POST = withErrorHandling(async (request: Request) => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -61,4 +62,4 @@ export async function POST(request: Request) {
   await logAudit({ userId: user.id, venueId: venue.id, action: "venue_create", outcome: "success" });
 
   return NextResponse.json({ venue });
-}
+});

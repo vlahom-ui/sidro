@@ -40,6 +40,8 @@ export function LoginForm() {
       const next = searchParams.get("next") ?? "/dashboard";
       router.push(next);
       router.refresh();
+    } catch {
+      setError("Došlo je do greške, pokušajte ponovno.");
     } finally {
       setLoading(false);
     }

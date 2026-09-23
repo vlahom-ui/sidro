@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { itemInputSchema } from "@/lib/itemSchema";
+import { withErrorHandling } from "@/lib/apiRoute";
 
 async function loadOwnedItem(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -19,10 +20,10 @@ async function loadOwnedItem(
   return item;
 }
 
-export async function PATCH(
+export const PATCH = withErrorHandling(async (
   request: Request,
   { params }: { params: Promise<{ item: string }> }
-) {
+) => {
   const { item: itemId } = await params;
   const supabase = await createClient();
   const {
@@ -62,12 +63,12 @@ export async function PATCH(
 
   if (error || !item) return NextResponse.json({ error: "Spremanje nije uspjelo." }, { status: 500 });
   return NextResponse.json({ item });
-}
+});
 
-export async function DELETE(
+export const DELETE = withErrorHandling(async (
   _request: Request,
   { params }: { params: Promise<{ item: string }> }
-) {
+) => {
   const { item: itemId } = await params;
   const supabase = await createClient();
   const {
@@ -82,4 +83,4 @@ export async function DELETE(
   if (error) return NextResponse.json({ error: "Brisanje nije uspjelo." }, { status: 500 });
 
   return NextResponse.json({ ok: true });
-}
+});

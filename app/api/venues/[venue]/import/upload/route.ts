@@ -12,15 +12,16 @@ import { extractItemsFromText } from "@/lib/parsers/heuristics";
 import { extractItemsFromPdfViaOcr } from "@/lib/parsers/ocr";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { logAudit } from "@/lib/audit";
+import { withErrorHandling } from "@/lib/apiRoute";
 
 // OCR fallback (rasterizacija + Tesseract) može potrajati — dopusti rutu
 // dulje trajanje na Vercelu nego default. Bez efekta izvan Vercela.
 export const maxDuration = 60;
 
-export async function POST(
+export const POST = withErrorHandling(async (
   request: Request,
   { params }: { params: Promise<{ venue: string }> }
-) {
+) => {
   const { venue: venueId } = await params;
   const supabase = await createClient();
   const {
@@ -158,4 +159,4 @@ export async function POST(
   });
 
   return NextResponse.json({ importSourceId: importSource?.id, items, usedOcr });
-}
+});
