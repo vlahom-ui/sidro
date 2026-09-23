@@ -24,13 +24,23 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
 3. Primijeniti migracije iz `supabase/migrations/` na Supabase projekt
    (`supabase db push` ili kroz Dashboard SQL editor), redom:
    `0001_init.sql` → `0002_security_fixes.sql` → `0003_drop_old_rate_limit_fn.sql`
-   → `0004_admin_notifications.sql`. `0002` i `0003` odražavaju sigurnosni
-   popravak koji je već ručno primijenjen na produkcijskoj `sidro` Supabase
-   bazi (search_path hardening na trigger funkcijama + `check_and_increment_rate_limit`
+   → `0005_check_email_exists.sql` → `0006_email_has_account_case_insensitive.sql`
+   → `0004_admin_notifications.sql` (0004 zahtijeva prvo deployanu edge
+   funkciju — vidi korak 5 — pa je na produkciji primijenjen zadnji;
+   numerički redoslijed 0004/0005/0006 ne utječe na ispravnost jer su
+   međusobno neovisni). `0002` i `0003` odražavaju sigurnosni popravak koji
+   je već ručno primijenjen na produkcijskoj `sidro` Supabase bazi
+   (search_path hardening na trigger funkcijama + `check_and_increment_rate_limit`
    sada koristi `auth.uid()` interno umjesto `p_user_id` parametra koji je
    pozivatelj mogao proizvoljno postaviti — vidi `lib/rateLimit.ts`, koji
    zato MORA primiti klijent sa sesijom korisnika, ne admin/service-role
    klijent, jer bi potonji uvijek dobio "authentication required" grešku).
+   `0005`/`0006` dodaju `email_has_account(p_email)` — SECURITY DEFINER
+   funkcija koja provjerava postoji li već račun s tim emailom (potvrđen
+   ili ne) izravno u `auth.users`, jer `signUp()` namjerno vraća identičan
+   odgovor za nov signup i za ponovljenu registraciju nepotvrđenog
+   korisnika (sprječavanje enumeracije), pa se ta dva slučaja ne mogu
+   pouzdano razlikovati samo iz `signUp()` odgovora.
 4. U Supabase Auth postavkama omogućiti Turnstile captcha zaštitu (koristi se
    na loginu preko `captchaToken`; registracija dodatno verificira token
    server-side u `/api/auth/register`).

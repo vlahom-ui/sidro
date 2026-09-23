@@ -225,6 +225,12 @@ export interface Database {
         };
         Returns: boolean;
       };
+      email_has_account: {
+        Args: {
+          p_email: string;
+        };
+        Returns: boolean;
+      };
     };
   };
 }
