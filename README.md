@@ -30,6 +30,7 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
    → `0009_rls_performance_optimization.sql`
    → `0010_item_groups.sql`
    → `0011_cjenici.sql`
+   → `0012_image_import_source_type.sql`
    → `0004_admin_notifications.sql` (0004 zahtijeva prvo deployanu edge
    funkciju — vidi korak 5 — pa je na produkciji primijenjen zadnji;
    numerički redoslijed 0004/0005/0006 ne utječe na ispravnost jer su
@@ -107,6 +108,23 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   node_modules — Next.jev file-tracing bi trebao uključiti samo stvarno
   korištene datoteke u konačni serverless bundle, ali vrijedi provjeriti
   veličinu Vercel funkcije nakon prvog deploya (limit je 250MB unzipped).
+- **Uvoz izravno iz fotografije (JPG/PNG)** (`extractItemsFromImageViaOcr()`
+  u `lib/parsers/ocr.ts`): fotografija (mobitelom slikan jelovnik/cjenik, ne
+  skeniran u PDF) nikad nema tekstualni sloj, pa se ne pokušava pasivna
+  ekstrakcija — ide se izravno u isti Tesseract hrv+eng pipeline koji koristi
+  PDF OCR fallback, samo bez koraka rasterizacije iz vektora (slika je već
+  rasterizirana na izvoru). Whitelist (`lib/security/fileValidation.ts`)
+  proširen uz istu magic-byte provjeru (JPEG `FF D8 FF`, PNG `89 50 4E 47`,
+  isti `file-type` paket kao za ostale formate — ne oslanja se na
+  ekstenziju/Content-Type). Limit rezolucije prije OCR-a je 4000px po dužoj
+  stranici
+  (veći nego kod PDF rasterizacije jer je fotografija već rasterizirana pa
+  treba nešto veću rezoluciju da tekst ostane čitljiv nakon eventualnog
+  smanjenja), s 30s timeoutom. `import_source_type` enum proširen na 'jpg'/
+  'png' (`0012_image_import_source_type.sql`). HEIC (čest format s iPhonea)
+  namjerno izostavljen — zahtijeva dodatnu native biblioteku za dekodiranje
+  koja nije trivijalna u serverless okruženju; korisnik se za sad upućuje
+  na JPG/PNG.
 - `/privacy` i `/terms` sadrže finalni pravni tekst (Meridian 18 d.o.o.).
 - Heuristički parser (`lib/parsers/heuristics.ts`, `extractItemsFromText`)
   prepoznaje i cijene bez decimala (npr. "35 €"), uz obavezan valutni

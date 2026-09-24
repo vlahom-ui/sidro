@@ -5,10 +5,16 @@ import { MAX_EXTRACTED_ITEMS } from "@/lib/security/fileValidation";
 
 // Sigurnosni/resursni limiti (nadovezuje se na postojeći security brief za upload):
 const MAX_OCR_PAGES = 20;
-const MAX_RASTER_DIMENSION = 2000; // px — dovoljno za OCR, ne treba veća rezolucija
+const MAX_RASTER_DIMENSION = 2000; // px — dovoljno za OCR rasteriziranog PDF-a iz vektorskog izvora
 const PER_PAGE_TIMEOUT_MS = 15_000;
 const TOTAL_OCR_TIMEOUT_MS = 45_000;
 const OCR_LANGS = "hrv+eng";
+
+// Fotografija (JPG/PNG) je već rasterizirana na izvoru (mobitel), pa dopuštamo
+// nešto veću gornju granicu nego kod PDF rasterizacije da tekst na fotografiji
+// ostane čitljiv za OCR nakon eventualnog smanjenja.
+const MAX_IMAGE_DIMENSION = 4000;
+const IMAGE_OCR_TIMEOUT_MS = 30_000;
 
 // Jezični podaci su bundlani lokalno (lib/ocr-data/*.traineddata.gz) i
 // WASM tesseract jezgra dolazi iz node_modules/tesseract.js-core — OCR
@@ -96,6 +102,55 @@ export async function extractItemsFromPdfViaOcr(buffer: Buffer): Promise<OcrFall
 
   const items = extractItemsFromText(combinedText).slice(0, MAX_EXTRACTED_ITEMS);
   return { items, pagesProcessed, pagesAttempted, usedOcr: items.length > 0 };
+}
+
+export interface ImageOcrResult {
+  items: ExtractedItem[];
+  usedOcr: boolean;
+}
+
+/**
+ * OCR izravno nad fotografijom cjenika/jelovnika (JPG/PNG) — za razliku od
+ * PDF-a, slika nikad nema tekstualni sloj, pa nema smisla prvo pokušavati
+ * pasivnu ekstrakciju: ide se izravno u isti Tesseract hrv+eng pipeline koji
+ * već koristi PDF OCR fallback, samo bez koraka rasterizacije iz vektora
+ * (slika je već rasterizirana na izvoru).
+ */
+export async function extractItemsFromImageViaOcr(buffer: Buffer): Promise<ImageOcrResult> {
+  const [canvasModule, tesseractModule] = await Promise.all([
+    import("@napi-rs/canvas"),
+    import("tesseract.js"),
+  ]);
+  const { createCanvas, loadImage } = canvasModule;
+  const { createWorker } = tesseractModule;
+
+  const image = await loadImage(buffer);
+  const largestDimension = Math.max(image.width, image.height);
+  const scale = largestDimension > MAX_IMAGE_DIMENSION ? MAX_IMAGE_DIMENSION / largestDimension : 1;
+  const targetWidth = Math.max(1, Math.round(image.width * scale));
+  const targetHeight = Math.max(1, Math.round(image.height * scale));
+
+  const canvas = createCanvas(targetWidth, targetHeight);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+  const pngBuffer = await canvas.encode("png");
+
+  const worker = await createWorker(OCR_LANGS, 1, {
+    langPath: LANG_DATA_PATH,
+    gzip: true,
+    cacheMethod: "none",
+  });
+
+  let text = "";
+  try {
+    const { data } = await withTimeout(worker.recognize(pngBuffer), IMAGE_OCR_TIMEOUT_MS, "OCR slike");
+    text = data.text;
+  } finally {
+    await worker.terminate();
+  }
+
+  const items = extractItemsFromText(text).slice(0, MAX_EXTRACTED_ITEMS);
+  return { items, usedOcr: items.length > 0 };
 }
 
 async function ocrSinglePage(

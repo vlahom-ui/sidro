@@ -1,7 +1,7 @@
 export type VenueStatus = "draft" | "published";
 export type ItemTip = "proizvod" | "usluga";
 export type ItemDostupnost = "dostupno" | "nedostupno";
-export type ImportSourceType = "pdf" | "docx" | "xlsx" | "csv" | "xml" | "url" | "tekst";
+export type ImportSourceType = "pdf" | "docx" | "xlsx" | "csv" | "xml" | "url" | "tekst" | "jpg" | "png";
 export type GeneratedFileFormat = "csv" | "xml";
 
 export interface Database {

@@ -8,8 +8,8 @@ import {
 } from "@/lib/security/fileValidation";
 import { parseCsvItems, parseXlsxItems, parseXmlItems } from "@/lib/parsers/structured";
 import { extractItemsFromDocx, extractItemsFromPdf } from "@/lib/parsers/documents";
-import { applyDefaultTip, extractItemsFromText } from "@/lib/parsers/heuristics";
-import { extractItemsFromPdfViaOcr } from "@/lib/parsers/ocr";
+import { applyDefaultTip, extractItemsFromText, type ExtractedItem } from "@/lib/parsers/heuristics";
+import { extractItemsFromImageViaOcr, extractItemsFromPdfViaOcr } from "@/lib/parsers/ocr";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { logAudit } from "@/lib/audit";
 import { withErrorHandling } from "@/lib/apiRoute";
@@ -64,7 +64,10 @@ export const POST = withErrorHandling(async (
       details: "Nepodržan ili neprepoznat tip datoteke",
     });
     return NextResponse.json(
-      { error: "Nepodržan tip datoteke. Dopušteno: PDF, DOCX, XLSX, CSV, XML." },
+      {
+        error:
+          "Nepodržan tip datoteke. Dopušteno: PDF, DOCX, XLSX, CSV, XML ili fotografija (JPG/PNG).",
+      },
       { status: 400 }
     );
   }
@@ -76,48 +79,15 @@ export const POST = withErrorHandling(async (
     upsert: false,
   });
 
-  let items;
-  try {
-    switch (sourceType) {
-      case "csv":
-        items = parseCsvItems(buffer.toString("utf-8"));
-        break;
-      case "xml":
-        items = parseXmlItems(buffer.toString("utf-8"));
-        break;
-      case "xlsx":
-        items = parseXlsxItems(buffer);
-        break;
-      case "docx":
-        items = await extractItemsFromDocx(buffer);
-        break;
-      case "pdf":
-        items = await extractItemsFromPdf(buffer);
-        break;
-    }
-  } catch {
-    await logAudit({
-      userId: user.id,
-      venueId,
-      action: "import_upload",
-      outcome: "failure",
-      details: `Parsiranje ${sourceType} nije uspjelo`,
-    });
-    return NextResponse.json({ error: "Obrada datoteke nije uspjela." }, { status: 422 });
-  }
-
-  if (!items || items.length === 0) {
-    // Pokušaj generičke heuristike nad tekstom kao zadnja linija obrane za CSV/plain izvore.
-    items = sourceType === "csv" ? extractItemsFromText(buffer.toString("utf-8")) : [];
-  }
-
-  // OCR fallback samo za PDF: standardna ekstrakcija ne pronalazi ništa
-  // najčešće kod print-ready PDF-ova s tekstom pretvorenim u krivulje —
-  // nema tekstualnih objekata za pasivnu ekstrakciju, samo vektorske putanje.
+  let items: ExtractedItem[] = [];
   let usedOcr = false;
-  if (sourceType === "pdf" && items.length === 0) {
+
+  if (sourceType === "jpg" || sourceType === "png") {
+    // Fotografija nikad nema tekstualni sloj — nema smisla "prvo pokušaj
+    // tekst-ekstrakciju", ide se izravno u isti OCR pipeline koji PDF
+    // fallback koristi za rasterizirane stranice.
     try {
-      const ocrResult = await extractItemsFromPdfViaOcr(buffer);
+      const ocrResult = await extractItemsFromImageViaOcr(buffer);
       items = ocrResult.items;
       usedOcr = ocrResult.usedOcr;
       await logAudit({
@@ -125,16 +95,77 @@ export const POST = withErrorHandling(async (
         venueId,
         action: "import_upload",
         outcome: usedOcr ? "success" : "warning",
-        details: `OCR fallback: ${ocrResult.pagesProcessed}/${ocrResult.pagesAttempted} stranica obrađeno, ${items.length} stavki`,
+        details: `OCR fotografije: ${items.length} stavki`,
       });
     } catch (err) {
       await logAudit({
         userId: user.id,
         venueId,
         action: "import_upload",
-        outcome: "warning",
-        details: `OCR fallback nije uspio: ${err instanceof Error ? err.message : "nepoznata greška"}`,
+        outcome: "failure",
+        details: `OCR fotografije nije uspio: ${err instanceof Error ? err.message : "nepoznata greška"}`,
       });
+      return NextResponse.json({ error: "Obrada fotografije nije uspjela." }, { status: 422 });
+    }
+  } else {
+    try {
+      switch (sourceType) {
+        case "csv":
+          items = parseCsvItems(buffer.toString("utf-8"));
+          break;
+        case "xml":
+          items = parseXmlItems(buffer.toString("utf-8"));
+          break;
+        case "xlsx":
+          items = parseXlsxItems(buffer);
+          break;
+        case "docx":
+          items = await extractItemsFromDocx(buffer);
+          break;
+        case "pdf":
+          items = await extractItemsFromPdf(buffer);
+          break;
+      }
+    } catch {
+      await logAudit({
+        userId: user.id,
+        venueId,
+        action: "import_upload",
+        outcome: "failure",
+        details: `Parsiranje ${sourceType} nije uspjelo`,
+      });
+      return NextResponse.json({ error: "Obrada datoteke nije uspjela." }, { status: 422 });
+    }
+
+    if (!items || items.length === 0) {
+      // Pokušaj generičke heuristike nad tekstom kao zadnja linija obrane za CSV/plain izvore.
+      items = sourceType === "csv" ? extractItemsFromText(buffer.toString("utf-8")) : [];
+    }
+
+    // OCR fallback samo za PDF: standardna ekstrakcija ne pronalazi ništa
+    // najčešće kod print-ready PDF-ova s tekstom pretvorenim u krivulje —
+    // nema tekstualnih objekata za pasivnu ekstrakciju, samo vektorske putanje.
+    if (sourceType === "pdf" && items.length === 0) {
+      try {
+        const ocrResult = await extractItemsFromPdfViaOcr(buffer);
+        items = ocrResult.items;
+        usedOcr = ocrResult.usedOcr;
+        await logAudit({
+          userId: user.id,
+          venueId,
+          action: "import_upload",
+          outcome: usedOcr ? "success" : "warning",
+          details: `OCR fallback: ${ocrResult.pagesProcessed}/${ocrResult.pagesAttempted} stranica obrađeno, ${items.length} stavki`,
+        });
+      } catch (err) {
+        await logAudit({
+          userId: user.id,
+          venueId,
+          action: "import_upload",
+          outcome: "warning",
+          details: `OCR fallback nije uspio: ${err instanceof Error ? err.message : "nepoznata greška"}`,
+        });
+      }
     }
   }
 

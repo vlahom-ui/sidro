@@ -154,8 +154,16 @@ export function ImportPanel({
 
       {mode === "upload" && (
         <form onSubmit={handleUpload} className="flex flex-col gap-3 max-w-md">
-          <p className="text-sm opacity-70">PDF, DOCX, XLS/XLSX, CSV ili XML s postojećim cjenikom (maks. 15 MB).</p>
-          <input type="file" name="file" accept=".pdf,.docx,.xlsx,.csv,.xml" className="text-sm" />
+          <p className="text-sm opacity-70">
+            PDF, DOCX, XLS/XLSX, CSV, XML ili fotografija (JPG/PNG) s postojećim cjenikom (maks. 15
+            MB).
+          </p>
+          <input
+            type="file"
+            name="file"
+            accept=".pdf,.docx,.xlsx,.csv,.xml,.jpg,.jpeg,.png,image/jpeg,image/png"
+            className="text-sm"
+          />
           {loading && (
             <div className="flex flex-col gap-1">
               <div className="w-full h-2 bg-navy/10 rounded overflow-hidden">

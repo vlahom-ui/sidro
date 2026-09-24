@@ -5,7 +5,7 @@ export const MAX_UPLOAD_BYTES = 15 * 1024 * 1024; // 15 MB
 export const MAX_EXTRACTED_ITEMS = 2000;
 export const PARSE_TIMEOUT_MS = 15000;
 
-export type AllowedSourceType = "pdf" | "docx" | "xlsx" | "csv" | "xml";
+export type AllowedSourceType = "pdf" | "docx" | "xlsx" | "csv" | "xml" | "jpg" | "png";
 
 interface TypeCheck {
   sourceType: AllowedSourceType;
@@ -28,6 +28,11 @@ const ALLOWED_TYPES: TypeCheck[] = [
     ],
     extMatches: ["xlsx"],
   },
+  // Fotografija cjenika/jelovnika (mobitelom slikana, ne skenirana u PDF) —
+  // magic bytes: JPEG "FF D8 FF", PNG "89 50 4E 47" (file-type paket to
+  // prepoznaje pouzdano, ne oslanjamo se na ekstenziju/Content-Type).
+  { sourceType: "jpg", mimeMatches: ["image/jpeg"], extMatches: ["jpg", "jpeg"] },
+  { sourceType: "png", mimeMatches: ["image/png"], extMatches: ["png"] },
 ];
 
 /**
