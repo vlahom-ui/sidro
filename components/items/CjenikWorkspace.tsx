@@ -97,6 +97,7 @@ export function CjenikWorkspace({
   const filteredItems = items.filter((i) => i.cjenik_id === selectedCjenikId);
   const filteredItemGroups = itemGroups.filter((g) => g.cjenik_id === selectedCjenikId);
   const existingItemCount = filteredItems.length;
+  const selectedCjenik = cjenici.find((c) => c.id === selectedCjenikId);
 
   if (cjenici.length === 0) {
     return (
@@ -129,7 +130,12 @@ export function CjenikWorkspace({
 
       <section>
         <h2 className="font-bold mb-3">Uvoz cjenika</h2>
-        <ImportPanel venueId={venueId} cjenikId={selectedCjenikId} existingItemCount={existingItemCount} />
+        <ImportPanel
+          venueId={venueId}
+          cjenikId={selectedCjenikId}
+          cjenikNaziv={selectedCjenik?.naziv}
+          existingItemCount={existingItemCount}
+        />
       </section>
 
       <section>

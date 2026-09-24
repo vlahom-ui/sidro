@@ -312,3 +312,24 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   s više cjenika. Nullable, bez defaulta: postojeći cjenici (svi kreirani
   prije ove promjene) zadržavaju `podkategorija_id = null` — ne pokušava se
   retroaktivno pogoditi kojoj bi kategoriji odgovarali.
+- **Popravak prikaza nakon uvoza** (`ItemsManager.tsx`) — nakon spremanja
+  uvezenih stavki (OCR/CSV/URL/tekst) ili grupirane usluge, stavke su se
+  ispravno spremale u bazu, ali se nisu prikazale na ekranu dok korisnik
+  ručno nije osvježio stranicu. Uzrok: `ItemsManager` je keyed po
+  odabranom cjeniku u `CjenikWorkspace`-u (remounta se kod PREBACIVANJA
+  cjenika), pa `useState(initialItems)` postavlja lokalni state samo kod
+  prvog mounta — uvoz/grupirane usluge pišu izravno u bazu preko vlastitih
+  ruta (ne kroz `ItemsManager`ov `handleCreate`), pa nakon `router.refresh()`
+  roditelj pošalje svježi `initialItems`/`initialItemGroups` prop na ISTI
+  cjenik bez remounta, a bez sync efekta lokalni state ostaje zaglavljen na
+  staroj vrijednosti. Popravljeno dodavanjem `useEffect` resync-a — isti
+  obrazac koji već ispravno postoji u `CjenikWorkspace.tsx`.
+- **Trajna potvrda spremanja uvoza + kontinuirani uvoz u isti cjenik**
+  (`ImportPanel.tsx`) — zamjena blokirajućeg `alert("Spremljeno N stavki.")`
+  trajnom porukom iznad forme za uvoz ("✓ Cjenik spremljen — dodano N
+  stavki u '{cjenik}' (ukupno M stavki u cjeniku)."), koja ne nestaje sama
+  nego ostaje dok korisnik ne pokrene novi uvoz ili klikne "+ Dodaj još
+  stavki u cjenik". Rješava slučaj kad korisnik ima više fotografija
+  jednog cjenika (npr. višestranični jelovnik) — nakon svakog spremanja
+  forma za uvoz je odmah spremna za sljedeću datoteku, bez gubitka
+  konteksta ili potrebe za ručnim potvrđivanjem popup dijaloga.

@@ -16,10 +16,12 @@ type Mode = "upload" | "url" | "tekst";
 export function ImportPanel({
   venueId,
   cjenikId,
+  cjenikNaziv,
   existingItemCount = 0,
 }: {
   venueId: string;
   cjenikId: string | null;
+  cjenikNaziv?: string | null;
   existingItemCount?: number;
 }) {
   const router = useRouter();
@@ -29,6 +31,10 @@ export function ImportPanel({
   const [extracted, setExtracted] = useState<ExtractedItem[] | null>(null);
   const [usedOcr, setUsedOcr] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  // Trajna potvrda zadnjeg spremanja (ne nestaje sama) — ostaje vidljiva dok
+  // korisnik ne pokrene novi uvoz, da jasno vidi da je cjenik spremljen i da
+  // odmah može uvesti još (npr. sljedeću fotografiju istog cjenika).
+  const [lastSaved, setLastSaved] = useState<{ count: number } | null>(null);
 
   const [urls, setUrls] = useState(["", "", ""]);
   const [text, setText] = useState("");
@@ -36,6 +42,7 @@ export function ImportPanel({
   async function handleUpload(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setLastSaved(null);
     const fileInput = e.currentTarget.elements.namedItem("file") as HTMLInputElement;
     const file = fileInput.files?.[0];
     if (!file) {
@@ -68,6 +75,7 @@ export function ImportPanel({
   async function handleUrlImport(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setLastSaved(null);
     const filledUrls = urls.map((u) => u.trim()).filter(Boolean);
     if (filledUrls.length === 0) {
       setError("Unesite barem jedan URL.");
@@ -94,6 +102,7 @@ export function ImportPanel({
   async function handleTextImport(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setLastSaved(null);
     if (!text.trim()) {
       setError("Zalijepite tekst cjenika.");
       return;
@@ -129,7 +138,8 @@ export function ImportPanel({
           setUsedOcr(false);
           setText("");
           setUrls(["", "", ""]);
-          alert(`Spremljeno ${count} stavki.`);
+          setMode("upload");
+          setLastSaved({ count });
           router.refresh();
         }}
       />
@@ -138,6 +148,26 @@ export function ImportPanel({
 
   return (
     <div className="flex flex-col gap-4">
+      {lastSaved && (
+        <div className="border border-navy/20 rounded px-4 py-3 bg-navy-light flex flex-col gap-2">
+          <p className="font-bold">
+            ✓ Cjenik spremljen — dodano {lastSaved.count} {lastSaved.count === 1 ? "stavka" : "stavki"}
+            {cjenikNaziv ? ` u "${cjenikNaziv}"` : ""} (ukupno {existingItemCount}{" "}
+            {existingItemCount === 1 ? "stavka" : "stavki"} u cjeniku).
+          </p>
+          <p className="text-sm opacity-70">
+            Možete odmah uvesti još — npr. sljedeću fotografiju istog cjenika.
+          </p>
+          <button
+            type="button"
+            onClick={() => setLastSaved(null)}
+            className="rounded px-3 py-1.5 border border-navy/30 font-bold text-sm self-start"
+          >
+            + Dodaj još stavki u cjenik
+          </button>
+        </div>
+      )}
+
       <div className="flex gap-2 text-sm">
         {(["upload", "url", "tekst"] as Mode[]).map((m) => (
           <button
