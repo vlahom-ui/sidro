@@ -31,6 +31,7 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
    → `0010_item_groups.sql`
    → `0011_cjenici.sql`
    → `0012_image_import_source_type.sql`
+   → `0013_first_seen_at_nullable.sql`
    → `0004_admin_notifications.sql` (0004 zahtijeva prvo deployanu edge
    funkciju — vidi korak 5 — pa je na produkciji primijenjen zadnji;
    numerički redoslijed 0004/0005/0006 ne utječe na ispravnost jer su
@@ -249,3 +250,29 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   cjenika prije insertanja, uz `confirm()` potvrdu). `CjeniciList` na
   `/dashboard/{venue}` briše cjenik bez dodatne potvrde ako je prazan, uz
   potvrdu s točnim brojem stavki ako nije.
+- **Ispravno postavljanje `first_seen_at` prema stvarnoj objavi objekta**
+  (`0013_first_seen_at_nullable.sql`) — zakonski relevantan datum "prvog
+  pojavljivanja" stavke je kad postane vidljiva javnosti (objava cjenika),
+  ne kad je administrator utipkao podatke dok je objekt još `status =
+  'draft'`. Prije ovog popravka `items.first_seen_at` je dobivao `now()`
+  automatski kod insertanja u bazu, pa bi stavke dodane u draft objekt
+  dobile pogrešan (prerani) datum. Migracija miče `not null default now()`
+  s `items.first_seen_at` (samo shema — namjerno NE dira postojeće retke,
+  njihove već postavljene vrijednosti ostaju kakve jesu makar možda
+  netočne iz razdoblja prije popravka; popravak vrijedi samo za nove
+  stavke od sad nadalje). Logika je eksplicitna u aplikacijskom kodu, ne
+  skriveni DB trigger (transparentnije, lakše za debug): centralni
+  `computeFirstSeenAt(venueStatus)` (`lib/firstSeenAt.ts`) vraća `now()`
+  ako je objekt već `'published'`, inače `null` — poziva se iz sva tri
+  mjesta gdje stavka nastaje (`items` ruta za ručni unos, `items/batch`
+  za uvoz, `item-groups` za grupirane/varijantne usluge). Kad se objekt
+  objavi (`POST /api/venues/[venue]/publish`, `status: 'published'`),
+  ruta bulk-ažurira SVE stavke tog objekta gdje je `first_seen_at` još
+  `null` na `now()` — uvjet `is("first_seen_at", null)` čini ovo
+  idempotentnim (siguran ponovni poziv, ne dira stavke koje već imaju
+  datum). `ItemsManager` prikazuje datum po stavci ("Prvi put u ponudi:
+  24.9.2026.") ili, dok je `null`, "Još nije objavljeno — datum će se
+  postaviti kod objave objekta" — vidljiv dokaz za potrebe inspekcije.
+  `ItemForm`-ov postojeći hint ("stavka nije postojala 10.9.2026.") sad
+  eksplicitno provjerava `first_seen_at !== null` prije usporedbe datuma,
+  jer se ne smije prikazati dok pravi datum još nije poznat.

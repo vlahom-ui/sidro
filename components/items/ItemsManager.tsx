@@ -144,6 +144,11 @@ export function ItemsManager({
             {item.cijena.toFixed(2)} EUR
             {item.sidrena_cijena !== null && ` · sidrena: ${item.sidrena_cijena.toFixed(2)} EUR`}
           </div>
+          <div className="text-xs opacity-60">
+            {item.first_seen_at
+              ? `Prvi put u ponudi: ${new Date(item.first_seen_at).toLocaleDateString("hr-HR")}.`
+              : "Još nije objavljeno — datum će se postaviti kod objave objekta"}
+          </div>
         </div>
         <div className="flex gap-3 text-sm">
           <button onClick={() => setEditingId(item.id)} className="text-slate underline">

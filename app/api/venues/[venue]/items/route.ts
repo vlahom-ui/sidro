@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { assertVenueOwner } from "@/lib/ownership";
 import { itemInputSchema } from "@/lib/itemSchema";
 import { withErrorHandling } from "@/lib/apiRoute";
+import { computeFirstSeenAt } from "@/lib/firstSeenAt";
 
 const cjenikIdSchema = z.string().uuid().nullable().optional();
 
@@ -58,6 +59,7 @@ export const POST = withErrorHandling(async (
       barkod: d.barkod,
       dostupnost: d.dostupnost,
       cjenik_id: cjenikId,
+      first_seen_at: computeFirstSeenAt(venue.status),
     })
     .select()
     .single();

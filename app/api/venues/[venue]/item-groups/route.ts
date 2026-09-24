@@ -5,6 +5,7 @@ import { assertVenueOwner } from "@/lib/ownership";
 import { composeVariantName } from "@/lib/itemGroups";
 import { logAudit } from "@/lib/audit";
 import { withErrorHandling } from "@/lib/apiRoute";
+import { computeFirstSeenAt } from "@/lib/firstSeenAt";
 
 const variantSchema = z.object({
   label: z.string().min(1).max(200),
@@ -69,6 +70,7 @@ export const POST = withErrorHandling(async (
     return NextResponse.json({ error: "Stvaranje grupe nije uspjelo." }, { status: 500 });
   }
 
+  const firstSeenAt = computeFirstSeenAt(venue.status);
   const rows = variants.map((v) => ({
     venue_id: venueId,
     tip,
@@ -79,6 +81,7 @@ export const POST = withErrorHandling(async (
     item_group_id: group.id,
     variant_label: v.label,
     cjenik_id: cjenikId ?? null,
+    first_seen_at: firstSeenAt,
   }));
 
   const { data: inserted, error: itemsError } = await supabase.from("items").insert(rows).select();

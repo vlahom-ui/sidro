@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { assertVenueOwner } from "@/lib/ownership";
 import { logAudit } from "@/lib/audit";
 import { withErrorHandling } from "@/lib/apiRoute";
+import { computeFirstSeenAt } from "@/lib/firstSeenAt";
 
 const itemSchema = z.object({
   tip: z.enum(["proizvod", "usluga"]),
@@ -92,6 +93,7 @@ export const POST = withErrorHandling(async (
     }
   }
 
+  const firstSeenAt = computeFirstSeenAt(venue.status);
   const rows = items.map((i) => ({
     venue_id: venueId,
     tip: i.tip,
@@ -102,6 +104,7 @@ export const POST = withErrorHandling(async (
     sidrena_cijena: i.cijena,
     kategorija: i.kategorija ?? null,
     cjenik_id: cjenikId ?? null,
+    first_seen_at: firstSeenAt,
   }));
 
   const { data: inserted, error } = await supabase.from("items").insert(rows).select();

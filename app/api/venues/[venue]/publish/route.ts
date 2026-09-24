@@ -32,6 +32,19 @@ export const POST = withErrorHandling(async (
     return NextResponse.json({ error: "Ažuriranje nije uspjelo." }, { status: 500 });
   }
 
+  if (parsed.data.status === "published") {
+    // Zakonski relevantan datum "prvog pojavljivanja" za stavke dodane dok je
+    // objekt bio draft — tek sad stvarno postaju vidljive javnosti. Uvjet
+    // `is("first_seen_at", null)` čini ovo idempotentnim: stavke koje već
+    // imaju datum (dodane nakon ranije objave, ili nakon ponovne objave) se
+    // ne diraju.
+    await supabase
+      .from("items")
+      .update({ first_seen_at: new Date().toISOString() })
+      .eq("venue_id", venueId)
+      .is("first_seen_at", null);
+  }
+
   await logAudit({
     userId: user.id,
     venueId: venue.id,

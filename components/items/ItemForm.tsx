@@ -95,6 +95,7 @@ export function ItemForm({
   const showFirstSeenHint =
     item &&
     !item.sidrena_cijena &&
+    item.first_seen_at !== null &&
     new Date(item.first_seen_at) > new Date("2026-09-10T00:00:00Z");
 
   return (

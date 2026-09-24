@@ -61,7 +61,7 @@ export interface Database {
           item_group_id: string | null;
           variant_label: string | null;
           cjenik_id: string | null;
-          first_seen_at: string;
+          first_seen_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -87,7 +87,7 @@ export interface Database {
           item_group_id?: string | null;
           variant_label?: string | null;
           cjenik_id?: string | null;
-          first_seen_at?: string;
+          first_seen_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
