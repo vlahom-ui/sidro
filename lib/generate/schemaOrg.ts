@@ -2,8 +2,10 @@ import type { Database } from "@/lib/database.types";
 
 type Venue = Database["public"]["Tables"]["venues"]["Row"];
 type Item = Database["public"]["Tables"]["items"]["Row"];
+type ItemGroup = Database["public"]["Tables"]["item_groups"]["Row"];
 
-function offerFor(item: Item) {
+/** Goli Offer za jednu prodajnu stavku (varijantu), bez omatanja u Service/Product. */
+function bareOffer(item: Item) {
   const additionalProperty = [];
   if (item.sidrena_cijena !== null) {
     additionalProperty.push({
@@ -13,12 +15,18 @@ function offerFor(item: Item) {
     });
   }
 
-  const offer = {
+  return {
     "@type": "Offer",
+    ...(item.variant_label ? { name: item.variant_label } : {}),
     price: item.cijena,
     priceCurrency: "EUR",
     ...(additionalProperty.length > 0 ? { additionalProperty } : {}),
   };
+}
+
+/** Negrupirana stavka — identično ponašanje kao prije uvođenja grupiranja. */
+function entityForSingleItem(item: Item) {
+  const offer = bareOffer(item);
 
   if (item.tip === "usluga") {
     return {
@@ -48,13 +56,48 @@ function offerFor(item: Item) {
   };
 }
 
-export function buildJsonLd(venue: Venue, items: Item[]) {
+/** Grupirana usluga/proizvod — jedan entitet, po jedan Offer po varijanti. */
+function entityForGroup(group: ItemGroup, variants: Item[]) {
+  const offers = variants.map(bareOffer);
+  const type = group.tip === "usluga" ? "Service" : "Product";
+
+  return {
+    "@type": type,
+    name: group.naziv,
+    ...(group.opis ? { description: group.opis } : {}),
+    offers,
+  };
+}
+
+export function buildJsonLd(venue: Venue, items: Item[], groups: ItemGroup[] = []) {
+  const variantsByGroupId = new Map<string, Item[]>();
+  const ungrouped: Item[] = [];
+  for (const item of items) {
+    if (item.item_group_id) {
+      const arr = variantsByGroupId.get(item.item_group_id) ?? [];
+      arr.push(item);
+      variantsByGroupId.set(item.item_group_id, arr);
+    } else {
+      ungrouped.push(item);
+    }
+  }
+
+  const groupEntities = groups
+    .map((g) => {
+      const variants = variantsByGroupId.get(g.id);
+      if (!variants || variants.length === 0) return null;
+      return entityForGroup(g, variants);
+    })
+    .filter((e): e is NonNullable<typeof e> => e !== null);
+
+  const ungroupedEntities = ungrouped.map(entityForSingleItem);
+
   return {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
     name: venue.naziv,
     address: venue.adresa,
     ...(venue.oib ? { taxID: venue.oib } : {}),
-    makesOffer: items.map(offerFor),
+    makesOffer: [...groupEntities, ...ungroupedEntities],
   };
 }

@@ -58,6 +58,8 @@ export interface Database {
           kategorija: string | null;
           redoslijed: number | null;
           url_slike: string | null;
+          item_group_id: string | null;
+          variant_label: string | null;
           first_seen_at: string;
           created_at: string;
           updated_at: string;
@@ -81,12 +83,36 @@ export interface Database {
           kategorija?: string | null;
           redoslijed?: number | null;
           url_slike?: string | null;
+          item_group_id?: string | null;
+          variant_label?: string | null;
           first_seen_at?: string;
           created_at?: string;
           updated_at?: string;
         };
         Relationships: [];
         Update: Partial<Database["public"]["Tables"]["items"]["Insert"]>;
+      };
+      item_groups: {
+        Row: {
+          id: string;
+          venue_id: string;
+          tip: ItemTip;
+          naziv: string;
+          opis: string | null;
+          trajanje: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          venue_id: string;
+          tip: ItemTip;
+          naziv: string;
+          opis?: string | null;
+          trajanje?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+        Update: Partial<Database["public"]["Tables"]["item_groups"]["Insert"]>;
       };
       price_history: {
         Row: {

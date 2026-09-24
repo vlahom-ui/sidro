@@ -30,6 +30,12 @@ export default async function CjenikPage({
     .eq("venue_id", venueId)
     .order("created_at", { ascending: false });
 
+  const { data: itemGroups } = await supabase
+    .from("item_groups")
+    .select("*")
+    .eq("venue_id", venueId)
+    .order("created_at", { ascending: false });
+
   return (
     <main className="min-h-screen">
       <DashboardHeader email={user.email ?? ""} />
@@ -48,7 +54,12 @@ export default async function CjenikPage({
 
         <section>
           <h2 className="font-bold mb-3">Stavke cjenika</h2>
-          <ItemsManager venueId={venue.id} initialItems={items ?? []} defaultTip={venue.default_tip} />
+          <ItemsManager
+            venueId={venue.id}
+            initialItems={items ?? []}
+            initialItemGroups={itemGroups ?? []}
+            defaultTip={venue.default_tip}
+          />
         </section>
       </div>
     </main>

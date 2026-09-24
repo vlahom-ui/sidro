@@ -4,9 +4,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Database, ItemTip } from "@/lib/database.types";
 import { ItemForm, type ItemFormValues } from "./ItemForm";
+import { GroupedItemForm } from "./GroupedItemForm";
 import { apiFetch } from "@/lib/apiFetch";
 
 type Item = Database["public"]["Tables"]["items"]["Row"];
+type ItemGroup = Database["public"]["Tables"]["item_groups"]["Row"];
 
 function toPayload(values: ItemFormValues) {
   return {
@@ -30,16 +32,21 @@ function toPayload(values: ItemFormValues) {
 export function ItemsManager({
   venueId,
   initialItems,
+  initialItemGroups,
   defaultTip,
 }: {
   venueId: string;
   initialItems: Item[];
+  initialItemGroups: ItemGroup[];
   defaultTip?: ItemTip | null;
 }) {
   const router = useRouter();
   const [items, setItems] = useState<Item[]>(initialItems);
+  const [itemGroups, setItemGroups] = useState<ItemGroup[]>(initialItemGroups);
   const [adding, setAdding] = useState(false);
+  const [addingGroup, setAddingGroup] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkMessage, setBulkMessage] = useState<string | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
@@ -99,13 +106,79 @@ export function ItemsManager({
     }
   }
 
+  function toggleGroup(groupId: string) {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  }
+
+  function renderItemRow(item: Item) {
+    if (editingId === item.id) {
+      return (
+        <ItemForm
+          key={item.id}
+          item={item}
+          submitLabel="Spremi izmjene"
+          onSubmit={(values) => handleUpdate(item.id, values)}
+          onCancel={() => setEditingId(null)}
+        />
+      );
+    }
+    return (
+      <div key={item.id} className="flex items-center justify-between border border-navy/10 rounded px-4 py-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="font-bold">{item.naziv}</span>
+            <span className="text-xs px-2 py-0.5 rounded border border-navy/30">{item.tip}</span>
+            {!item.sidrena_cijena && <span className="text-xs text-alert">bez sidrene cijene</span>}
+          </div>
+          <div className="text-sm opacity-70">
+            {item.cijena.toFixed(2)} EUR
+            {item.sidrena_cijena !== null && ` · sidrena: ${item.sidrena_cijena.toFixed(2)} EUR`}
+          </div>
+        </div>
+        <div className="flex gap-3 text-sm">
+          <button onClick={() => setEditingId(item.id)} className="text-slate underline">
+            Uredi
+          </button>
+          <button onClick={() => handleDelete(item.id)} className="text-alert underline">
+            Obriši
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const groupedItemsByGroupId = new Map<string, Item[]>();
+  const ungroupedItems: Item[] = [];
+  for (const item of items) {
+    if (item.item_group_id) {
+      const arr = groupedItemsByGroupId.get(item.item_group_id) ?? [];
+      arr.push(item);
+      groupedItemsByGroupId.set(item.item_group_id, arr);
+    } else {
+      ungroupedItems.push(item);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2 items-center">
-        {!adding && (
-          <button onClick={() => setAdding(true)} className="btn-primary rounded px-4 py-2 font-bold">
-            + Dodaj stavku
-          </button>
+        {!adding && !addingGroup && (
+          <>
+            <button onClick={() => setAdding(true)} className="btn-primary rounded px-4 py-2 font-bold">
+              + Dodaj stavku
+            </button>
+            <button
+              onClick={() => setAddingGroup(true)}
+              className="rounded px-4 py-2 border border-navy/30 font-bold"
+            >
+              + Dodaj uslugu s varijantama
+            </button>
+          </>
         )}
         <button
           onClick={handleSetAnchor}
@@ -127,48 +200,46 @@ export function ItemsManager({
         />
       )}
 
+      {addingGroup && (
+        <GroupedItemForm
+          venueId={venueId}
+          defaultTip={defaultTip}
+          onCancel={() => setAddingGroup(false)}
+          onSaved={(count) => {
+            setAddingGroup(false);
+            setBulkMessage(`Grupa spremljena, ${count} varijanti dodano.`);
+            router.refresh();
+          }}
+        />
+      )}
+
       {items.length === 0 ? (
         <p className="text-sm opacity-70">Još nema stavki. Dodajte ručno ili uvezite cjenik.</p>
       ) : (
         <div className="flex flex-col gap-2">
-          {items.map((item) =>
-            editingId === item.id ? (
-              <ItemForm
-                key={item.id}
-                item={item}
-                submitLabel="Spremi izmjene"
-                onSubmit={(values) => handleUpdate(item.id, values)}
-                onCancel={() => setEditingId(null)}
-              />
-            ) : (
-              <div
-                key={item.id}
-                className="flex items-center justify-between border border-navy/10 rounded px-4 py-3"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold">{item.naziv}</span>
-                    <span className="text-xs px-2 py-0.5 rounded border border-navy/30">{item.tip}</span>
-                    {!item.sidrena_cijena && (
-                      <span className="text-xs text-alert">bez sidrene cijene</span>
-                    )}
-                  </div>
-                  <div className="text-sm opacity-70">
-                    {item.cijena.toFixed(2)} EUR
-                    {item.sidrena_cijena !== null && ` · sidrena: ${item.sidrena_cijena.toFixed(2)} EUR`}
-                  </div>
-                </div>
-                <div className="flex gap-3 text-sm">
-                  <button onClick={() => setEditingId(item.id)} className="text-slate underline">
-                    Uredi
-                  </button>
-                  <button onClick={() => handleDelete(item.id)} className="text-alert underline">
-                    Obriši
-                  </button>
-                </div>
+          {itemGroups.map((group) => {
+            const groupItems = groupedItemsByGroupId.get(group.id);
+            if (!groupItems || groupItems.length === 0) return null;
+            const isExpanded = expandedGroups.has(group.id);
+            return (
+              <div key={group.id} className="border border-navy/10 rounded">
+                <button
+                  onClick={() => toggleGroup(group.id)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-left"
+                >
+                  <span className="font-bold">
+                    {group.naziv} ({groupItems.length} {groupItems.length === 1 ? "varijanta" : "varijanti"})
+                  </span>
+                  <span className="text-sm opacity-60">{isExpanded ? "▴" : "▾"}</span>
+                </button>
+                {isExpanded && (
+                  <div className="flex flex-col gap-2 px-4 pb-4">{groupItems.map(renderItemRow)}</div>
+                )}
               </div>
-            )
-          )}
+            );
+          })}
+
+          {ungroupedItems.map(renderItemRow)}
         </div>
       )}
     </div>

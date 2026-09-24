@@ -28,6 +28,7 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
    → `0007_price_history_trigger_security_definer.sql`
    → `0008_venue_default_tip.sql`
    → `0009_rls_performance_optimization.sql`
+   → `0010_item_groups.sql`
    → `0004_admin_notifications.sql` (0004 zahtijeva prvo deployanu edge
    funkciju — vidi korak 5 — pa je na produkciji primijenjen zadnji;
    numerički redoslijed 0004/0005/0006 ne utječe na ispravnost jer su
@@ -161,3 +162,30 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   `venues`/`items`/`generated_files` (vlasnička + javna — namjeran dizajn,
   spajanje u OR bi otežalo čitljivost za zanemarivu dobit) i "unused index"
   nalazi (baza premlada da bi bili mjerodavni).
+- **Grupirane usluge s varijantnim cijenama** (`0010_item_groups.sql`) —
+  rješava slučaj cjenika gdje cijena ovisi o broju osoba, izboru modela/
+  plovila ili kombinaciji dvije varijable (npr. turoperatori, iznajmljivanje).
+  `items` se ne mijenja u svrsi — i dalje flat, jedan redak = jedna cijena,
+  CSV/XML izvoz identičan kao prije (generatori u `lib/generate/files.ts`
+  čitaju samo `items.naziv`/`cijena`, ne diraju grupiranje). Iznad toga je
+  tanak sloj: `item_groups` (naziv/opis/trajanje grupe) + `items.item_group_id`
+  i `items.variant_label`. `items.naziv` za varijantu se sastavlja kao
+  `"{grupa.naziv} - {variant_label}"` u trenutku spremanja
+  (`composeVariantName()` u `lib/itemGroups.ts`), preko nove rute
+  `POST /api/venues/[venue]/item-groups` koja u jednom pozivu stvara grupu i
+  sve varijante (uz kompenzacijski rollback grupe ako insert varijanti padne,
+  budući da PostgREST ovdje ne daje pravu cross-request transakciju).
+  UI (`GroupedItemForm`) podržava jednostavnu 1D listu (uz "brzi unos
+  raspona" za broj osoba, s ispravnom hrvatskom sklonidbom osoba/osobe) i 2D
+  matricu (dvije osi vrijednosti × cijena po ćeliji, npr. PAX × broj čaša na
+  degustaciji). `ItemsManager` prikazuje grupirane stavke kolapsirano
+  (naziv grupe + broj varijanti, klik širi pojedinačne retke — uređuju se
+  kroz postojeći `ItemForm` mehanizam, bez posebne logike). Javna `/c/{slug}`
+  stranica prikazuje grupu kao jednu karticu s tablicom varijanti
+  (`item_groups` ima vlastitu RLS politiku, `item_groups_public_select`, po
+  istom obrascu kao `items_public_select`). `buildJsonLd()` generira jedan
+  `Service`/`Product` entitet po grupi s po jednim `Offer` po varijanti u
+  `offers` nizu; negrupirane stavke zadržavaju identično ponašanje kao prije.
+  Namjerno izvan opsega: auto-parser (PDF/OCR/URL/tekst) se ne proširuje da
+  pokuša prepoznati multi-tier tablice — rizik pogrešno parsirane cijene
+  objavljene kao "službena" je gori od ručnog unosa kroz ovaj UI.

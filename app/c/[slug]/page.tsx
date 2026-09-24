@@ -2,6 +2,10 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { buildJsonLd } from "@/lib/generate/schemaOrg";
+import type { Database } from "@/lib/database.types";
+
+type Item = Database["public"]["Tables"]["items"]["Row"];
+type ItemGroup = Database["public"]["Tables"]["item_groups"]["Row"];
 
 export const revalidate = 0;
 
@@ -54,15 +58,22 @@ export default async function PublicVenuePage({
     .order("kategorija", { ascending: true })
     .order("redoslijed", { ascending: true });
 
+  const { data: itemGroups } = await supabase
+    .from("item_groups")
+    .select("*")
+    .eq("venue_id", venue.id);
+
   const { data: generatedFiles } = await supabase
     .from("generated_files")
     .select("*")
     .eq("venue_id", venue.id)
     .eq("is_current", true);
 
-  const proizvodi = (items ?? []).filter((i) => i.tip === "proizvod");
-  const usluge = (items ?? []).filter((i) => i.tip === "usluga");
-  const jsonLd = buildJsonLd(venue, items ?? []);
+  const allItems = items ?? [];
+  const allGroups = itemGroups ?? [];
+  const proizvodi = allItems.filter((i) => i.tip === "proizvod");
+  const usluge = allItems.filter((i) => i.tip === "usluga");
+  const jsonLd = buildJsonLd(venue, allItems, allGroups);
 
   return (
     <main className="min-h-screen px-4 py-10">
@@ -93,14 +104,14 @@ export default async function PublicVenuePage({
         {usluge.length > 0 && (
           <section className="mb-10">
             <h2 className="font-bold text-lg mb-3">Usluge</h2>
-            <ItemTable items={usluge} />
+            <ItemSection items={usluge} groups={allGroups.filter((g) => g.tip === "usluga")} />
           </section>
         )}
 
         {proizvodi.length > 0 && (
           <section className="mb-10">
             <h2 className="font-bold text-lg mb-3">Proizvodi</h2>
-            <ItemTable items={proizvodi} />
+            <ItemSection items={proizvodi} groups={allGroups.filter((g) => g.tip === "proizvod")} />
           </section>
         )}
 
@@ -109,6 +120,55 @@ export default async function PublicVenuePage({
         )}
       </div>
     </main>
+  );
+}
+
+function ItemSection({ items, groups }: { items: Item[]; groups: ItemGroup[] }) {
+  const variantsByGroupId = new Map<string, Item[]>();
+  const ungrouped: Item[] = [];
+  for (const item of items) {
+    if (item.item_group_id) {
+      const arr = variantsByGroupId.get(item.item_group_id) ?? [];
+      arr.push(item);
+      variantsByGroupId.set(item.item_group_id, arr);
+    } else {
+      ungrouped.push(item);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {groups.map((group) => {
+        const variants = variantsByGroupId.get(group.id);
+        if (!variants || variants.length === 0) return null;
+        return (
+          <div key={group.id} className="border border-navy/10 rounded p-4">
+            <p className="font-bold">{group.naziv}</p>
+            {group.opis && <p className="text-sm opacity-70 mt-0.5">{group.opis}</p>}
+            {group.trajanje && <p className="text-xs opacity-60 mt-0.5">{group.trajanje}</p>}
+            <div className="flex flex-col mt-3">
+              {variants.map((v) => (
+                <div
+                  key={v.id}
+                  className="flex items-baseline justify-between border-b border-navy/10 py-1.5 last:border-b-0"
+                >
+                  <span className="text-sm">{v.variant_label}</span>
+                  <span className="text-right">
+                    <span className="font-bold text-sm">{formatPrice(v.cijena)}</span>
+                    {v.sidrena_cijena !== null && (
+                      <span className="block text-xs opacity-60">
+                        sidrena cijena (10.9.2026.): {formatPrice(v.sidrena_cijena)}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      {ungrouped.length > 0 && <ItemTable items={ungrouped} />}
+    </div>
   );
 }
 
