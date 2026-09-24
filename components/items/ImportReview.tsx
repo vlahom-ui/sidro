@@ -240,7 +240,7 @@ export function ImportReview({
           disabled={saving}
           className="btn-primary rounded px-4 py-2 font-bold disabled:opacity-50"
         >
-          {saving ? "Spremanje..." : existingItemCount > 0 ? "Dodaj ovim stavkama" : "Spremi odabrane stavke u cjenik"}
+          {saving ? "Spremanje..." : existingItemCount > 0 ? "Dodaj stavke u postojeći cjenik" : "Spremi odabrane stavke u cjenik"}
         </button>
         {existingItemCount > 0 && (
           <button
