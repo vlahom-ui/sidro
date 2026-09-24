@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Database, ItemTip } from "@/lib/database.types";
 import { ItemForm, type ItemFormValues } from "./ItemForm";
 import { GroupedItemForm } from "./GroupedItemForm";
@@ -45,6 +45,22 @@ export function ItemsManager({
   const router = useRouter();
   const [items, setItems] = useState<Item[]>(initialItems);
   const [itemGroups, setItemGroups] = useState<ItemGroup[]>(initialItemGroups);
+
+  // Komponenta je keyed po odabranom cjeniku u CjenikWorkspace-u (remounta se
+  // samo kod PREBACIVANJA cjenika) — kad roditelj nakon router.refresh() (npr.
+  // nakon spremanja OCR/CSV/URL/tekst uvoza ili grupirane usluge, koji svi
+  // pišu izravno u bazu preko posebnih ruta, ne preko handleCreate ovdje)
+  // pošalje svježi initialItems/initialItemGroups na ISTI cjenik, bez ovog
+  // efekta lokalni state ostaje zaglavljen na staroj (praznoj) vrijednosti
+  // iz prvog mounta, pa se upravo spremljene stavke ne prikažu na ekranu.
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
+
+  useEffect(() => {
+    setItemGroups(initialItemGroups);
+  }, [initialItemGroups]);
+
   const [adding, setAdding] = useState(false);
   const [addingGroup, setAddingGroup] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
