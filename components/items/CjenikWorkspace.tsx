@@ -9,6 +9,8 @@ import { ItemsManager } from "./ItemsManager";
 type Item = Database["public"]["Tables"]["items"]["Row"];
 type ItemGroup = Database["public"]["Tables"]["item_groups"]["Row"];
 type Cjenik = Database["public"]["Tables"]["cjenici"]["Row"];
+type Kategorija = Database["public"]["Tables"]["kategorije"]["Row"];
+type Podkategorija = Database["public"]["Tables"]["podkategorije"]["Row"];
 
 const NONE = "__none__";
 
@@ -23,6 +25,8 @@ export function CjenikWorkspace({
   initialItemGroups,
   initialCjenikId,
   defaultTip,
+  kategorije,
+  podkategorije,
 }: {
   venueId: string;
   initialCjenici: Cjenik[];
@@ -30,6 +34,8 @@ export function CjenikWorkspace({
   initialItemGroups: ItemGroup[];
   initialCjenikId: string | null;
   defaultTip?: ItemTip | null;
+  kategorije: Kategorija[];
+  podkategorije: Podkategorija[];
 }) {
   const [cjenici, setCjenici] = useState<Cjenik[]>(initialCjenici);
   const [items, setItems] = useState<Item[]>(initialItems);
@@ -97,6 +103,8 @@ export function CjenikWorkspace({
       <CjenikSelector
         venueId={venueId}
         cjenici={cjenici}
+        kategorije={kategorije}
+        podkategorije={podkategorije}
         selectedCjenikId={selectedCjenikId}
         itemCounts={itemCounts}
         onSelect={setSelectedCjenikId}
@@ -110,6 +118,8 @@ export function CjenikWorkspace({
       <CjenikSelector
         venueId={venueId}
         cjenici={cjenici}
+        kategorije={kategorije}
+        podkategorije={podkategorije}
         selectedCjenikId={selectedCjenikId}
         itemCounts={itemCounts}
         ungroupedItemCount={ungroupedCount}

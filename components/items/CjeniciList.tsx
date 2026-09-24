@@ -9,6 +9,7 @@ interface CjenikWithCount {
   id: string;
   naziv: string;
   itemCount: number;
+  kategorijaLabel: string | null;
 }
 
 export function CjeniciList({ venueId, cjenici }: { venueId: string; cjenici: CjenikWithCount[] }) {
@@ -47,8 +48,11 @@ export function CjeniciList({ venueId, cjenici }: { venueId: string; cjenici: Cj
       {cjenici.map((c) => (
         <div key={c.id} className="flex items-center justify-between border border-navy/10 rounded px-4 py-3">
           <Link href={`/dashboard/${venueId}/cjenik?cjenik=${c.id}`} className="flex-1">
-            <span className="font-bold">{c.naziv}</span>
-            <span className="text-sm opacity-70 ml-2">({c.itemCount} stavki)</span>
+            <div>
+              <span className="font-bold">{c.naziv}</span>
+              <span className="text-sm opacity-70 ml-2">({c.itemCount} stavki)</span>
+            </div>
+            {c.kategorijaLabel && <div className="text-xs opacity-60">{c.kategorijaLabel}</div>}
           </Link>
           <button
             onClick={() => handleDelete(c)}

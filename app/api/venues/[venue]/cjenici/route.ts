@@ -7,6 +7,7 @@ import { withErrorHandling } from "@/lib/apiRoute";
 
 const bodySchema = z.object({
   naziv: z.string().min(1).max(200),
+  podkategorijaId: z.string().uuid().optional().nullable(),
 });
 
 export const POST = withErrorHandling(async (
@@ -27,9 +28,22 @@ export const POST = withErrorHandling(async (
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: "Nevažeći podaci." }, { status: 400 });
 
+  // Kategorija je opcionalna, ali ako je poslana, ne uzima se na vjeru s
+  // klijenta — mora referencirati stvarnu podkategoriju.
+  let podkategorijaId: string | null = null;
+  if (parsed.data.podkategorijaId) {
+    const { data: podkategorija } = await supabase
+      .from("podkategorije")
+      .select("id")
+      .eq("id", parsed.data.podkategorijaId)
+      .maybeSingle();
+    if (!podkategorija) return NextResponse.json({ error: "Nevažeća kategorija cjenika." }, { status: 400 });
+    podkategorijaId = podkategorija.id;
+  }
+
   const { data: cjenik, error } = await supabase
     .from("cjenici")
-    .insert({ venue_id: venueId, naziv: parsed.data.naziv })
+    .insert({ venue_id: venueId, naziv: parsed.data.naziv, podkategorija_id: podkategorijaId })
     .select()
     .single();
 

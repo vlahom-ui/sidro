@@ -51,9 +51,18 @@ export default async function VenueDetailPage({
 
   const { data: cjenici } = await supabase
     .from("cjenici")
-    .select("id, naziv")
+    .select("id, naziv, podkategorija_id")
     .eq("venue_id", venueId)
     .order("created_at", { ascending: false });
+
+  const { data: kategorije } = await supabase.from("kategorije").select("*");
+  const { data: podkategorije } = await supabase.from("podkategorije").select("*");
+  const kategorijaById = new Map((kategorije ?? []).map((k) => [k.id, k]));
+  const kategorijaLabelByPodkategorijaId = new Map<string, string>();
+  for (const p of podkategorije ?? []) {
+    const k = kategorijaById.get(p.kategorija_id);
+    if (k) kategorijaLabelByPodkategorijaId.set(p.id, `${k.naziv}: ${p.naziv}`);
+  }
 
   const { data: itemsForCount } = await supabase
     .from("items")
@@ -69,6 +78,7 @@ export default async function VenueDetailPage({
     id: c.id,
     naziv: c.naziv,
     itemCount: itemCountByCjenik[c.id] ?? 0,
+    kategorijaLabel: c.podkategorija_id ? kategorijaLabelByPodkategorijaId.get(c.podkategorija_id) ?? null : null,
   }));
 
   const publicUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/c/${venue.slug}`;

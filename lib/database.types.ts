@@ -21,7 +21,6 @@ export interface Database {
           oib: string | null;
           status: VenueStatus;
           default_tip: ItemTip | null;
-          podkategorija_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -34,13 +33,12 @@ export interface Database {
           oib?: string | null;
           status?: VenueStatus;
           default_tip?: ItemTip | null;
-          podkategorija_id?: string | null;
           created_at?: string;
         };
         Relationships: [];
         Update: Partial<Database["public"]["Tables"]["venues"]["Insert"]>;
       };
-      venue_kategorije: {
+      kategorije: {
         Row: {
           id: string;
           naziv: string;
@@ -52,9 +50,9 @@ export interface Database {
           redoslijed?: number;
         };
         Relationships: [];
-        Update: Partial<Database["public"]["Tables"]["venue_kategorije"]["Insert"]>;
+        Update: Partial<Database["public"]["Tables"]["kategorije"]["Insert"]>;
       };
-      venue_podkategorije: {
+      podkategorije: {
         Row: {
           id: string;
           kategorija_id: string;
@@ -68,7 +66,7 @@ export interface Database {
           redoslijed?: number;
         };
         Relationships: [];
-        Update: Partial<Database["public"]["Tables"]["venue_podkategorije"]["Insert"]>;
+        Update: Partial<Database["public"]["Tables"]["podkategorije"]["Insert"]>;
       };
       items: {
         Row: {
@@ -155,12 +153,14 @@ export interface Database {
           id: string;
           venue_id: string;
           naziv: string;
+          podkategorija_id: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           venue_id: string;
           naziv: string;
+          podkategorija_id?: string | null;
           created_at?: string;
         };
         Relationships: [];

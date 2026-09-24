@@ -44,6 +44,9 @@ export default async function CjenikPage({
     .eq("venue_id", venueId)
     .order("created_at", { ascending: false });
 
+  const { data: kategorije } = await supabase.from("kategorije").select("*").order("redoslijed");
+  const { data: podkategorije } = await supabase.from("podkategorije").select("*").order("redoslijed");
+
   return (
     <main className="min-h-screen">
       <DashboardHeader email={user.email ?? ""} />
@@ -62,6 +65,8 @@ export default async function CjenikPage({
           initialItemGroups={itemGroups ?? []}
           initialCjenikId={cjenikParam ?? null}
           defaultTip={venue.default_tip}
+          kategorije={kategorije ?? []}
+          podkategorije={podkategorije ?? []}
         />
       </div>
     </main>

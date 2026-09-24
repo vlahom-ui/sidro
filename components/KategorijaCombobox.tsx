@@ -3,24 +3,23 @@
 import { useMemo, useState } from "react";
 import type { Database } from "@/lib/database.types";
 
-type VenueKategorija = Database["public"]["Tables"]["venue_kategorije"]["Row"];
-type VenuePodkategorija = Database["public"]["Tables"]["venue_podkategorije"]["Row"];
+type Kategorija = Database["public"]["Tables"]["kategorije"]["Row"];
+type Podkategorija = Database["public"]["Tables"]["podkategorije"]["Row"];
 
 /**
  * Pretraživi birač Sidrove interne poslovne kategorizacije (kategorija →
- * podkategorija) — zamjena za plosnati dropdown "Oblik objekta". Korisnik
- * tipka, rezultati se filtriraju i grupiraju po glavnoj kategoriji (sama
- * kategorija nije klikabilna, samo grupni naslov — klikabilne su isključivo
- * podkategorije).
+ * podkategorija). Korisnik tipka, rezultati se filtriraju i grupiraju po
+ * glavnoj kategoriji (sama kategorija nije klikabilna, samo grupni naslov —
+ * klikabilne su isključivo podkategorije).
  */
-export function VenuePodkategorijaCombobox({
+export function KategorijaCombobox({
   kategorije,
   podkategorije,
   value,
   onChange,
 }: {
-  kategorije: VenueKategorija[];
-  podkategorije: VenuePodkategorija[];
+  kategorije: Kategorija[];
+  podkategorije: Podkategorija[];
   value: string | null;
   onChange: (podkategorijaId: string) => void;
 }) {
@@ -41,7 +40,7 @@ export function VenuePodkategorijaCombobox({
         })
       : podkategorije;
 
-    const byKategorija = new Map<string, VenuePodkategorija[]>();
+    const byKategorija = new Map<string, Podkategorija[]>();
     for (const p of matching) {
       const arr = byKategorija.get(p.kategorija_id) ?? [];
       arr.push(p);
@@ -56,7 +55,7 @@ export function VenuePodkategorijaCombobox({
       }));
   }, [query, podkategorije, kategorije, kategorijaById]);
 
-  function selectItem(p: VenuePodkategorija) {
+  function selectItem(p: Podkategorija) {
     onChange(p.id);
     setQuery("");
     setOpen(false);
