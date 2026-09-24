@@ -36,10 +36,14 @@ function rowToItem(row: Record<string, unknown>): ExtractedItem | null {
 
   const tipRaw = findValue(row, TIP_KEYS)?.toLowerCase();
   const unit = findValue(row, UNIT_KEYS);
-  const tip: ExtractedItem["tip"] =
-    tipRaw === "usluga" ? "usluga" : tipRaw === "proizvod" ? "proizvod" : unit ? "proizvod" : "usluga";
+  const tipExplicit = tipRaw === "usluga" || tipRaw === "proizvod";
+  const tip: ExtractedItem["tip"] = tipExplicit
+    ? (tipRaw as ExtractedItem["tip"])
+    : unit
+      ? "proizvod"
+      : "usluga";
 
-  return { tip, naziv: naziv.slice(0, 300), cijena };
+  return { tip, naziv: naziv.slice(0, 300), cijena, tipExplicit };
 }
 
 /** Sigurno parsanje CSV-a. Ćelije koje počinju s = + - @ tretiraju se kao plain text. */

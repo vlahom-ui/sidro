@@ -3,6 +3,13 @@ export interface ExtractedItem {
   naziv: string;
   cijena: number;
   kategorija?: string | null;
+  /**
+   * True samo kad je tip eksplicitno naveden u izvornim podacima (npr. CSV/
+   * XML/XLSX stupac "tip"/"vrsta"), ne pogođen heuristikom. applyDefaultTip
+   * ne smije prepisati eksplicitno naveden tip — to bi tiho izbrisalo
+   * namjerno unesen podatak korisnika.
+   */
+  tipExplicit?: boolean;
 }
 
 // Cijena s decimalama ne treba valutnu oznaku (npr. "12,50"), ali cijena bez
@@ -120,7 +127,7 @@ export function applyDefaultTip(
   defaultTip: ExtractedItem["tip"] | null | undefined
 ): ExtractedItem[] {
   if (!defaultTip) return items;
-  return items.map((item) => ({ ...item, tip: defaultTip }));
+  return items.map((item) => (item.tipExplicit ? item : { ...item, tip: defaultTip }));
 }
 
 /** Skida HTML oznake i pretvara u plain text pogodan za extractItemsFromText. */

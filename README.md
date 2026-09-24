@@ -133,7 +133,14 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   URL/tekst/CSV/XML/XLSX/OCR, preko `applyDefaultTip()` u
   `lib/parsers/heuristics.ts`) i pre-popunjava tip na formi "+ Dodaj stavku".
   Ne ograničava objekt na jedan tip, samo mijenja početnu vrijednost; tip se
-  i dalje može mijenjati pojedinačno ili bulk-akcijom.
+  i dalje može mijenjati pojedinačno ili bulk-akcijom. Za CSV/XML/XLSX
+  (`lib/parsers/structured.ts`) default se primjenjuje SAMO na retke bez
+  eksplicitnog tip stupca — `ExtractedItem.tipExplicit` označava retke gdje
+  je tip stvarno naveden u izvoru (npr. izvezeno iz drugog sustava), i
+  `applyDefaultTip()` te retke nikad ne prepisuje, jer bi prepisivanje
+  namjerno unesenog podatka bilo gore od heurističkog nagađanja. Tekst/PDF/
+  OCR/URL nemaju vlastiti tip podatak pa se na njih default primjenjuje bez
+  iznimke.
 - Nova stavka (uvoz i ručno dodavanje) dobiva `sidrena_cijena` = `cijena` po
   defaultu umjesto praznog polja. Kod ručnog dodavanja (`ItemForm`) sidrena
   cijena prati unos cijene dok je korisnik ručno ne izmijeni; kod uvoza se
