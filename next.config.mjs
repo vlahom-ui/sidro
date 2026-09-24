@@ -26,11 +26,21 @@ const nextConfig = {
       "./node_modules/tesseract.js/**",
       "./node_modules/tesseract.js-core/**",
       // Datoteke forsirano uključene gore (glob include) se ne skeniraju
-      // dalje za tranzitivne require-ove — wasm-feature-detect (ovisnost
-      // worker-script/node/getCore.js) mora biti naveden posebno, inače
-      // ostane izostavljen unatoč tome što je gornji include "pokrio"
-      // datoteku koja ga zahtijeva.
+      // dalje za NJIHOVE require-ove — svaki paket koji worker-script stablo
+      // zahtijeva (potvrđeno statičkim praćenjem require() poziva od
+      // worker-script/node/index.js nadalje) mora biti naveden posebno,
+      // inače ostane izostavljen unatoč tome što je gornji include
+      // "pokrio" datoteku koja ga zahtijeva. wasm-feature-detect
+      // (worker-script/node/getCore.js) i bmp-js (worker-script/utils/
+      // setImage.js) su ovako otkriveni tek u produkciji (svaki zasebnim
+      // "Cannot find module" padom) — is-url/node-fetch/regenerator-runtime
+      // Next.jev file-tracing ipak uspije sam pronaći, ali su ovdje
+      // navedeni eksplicitno da se ne oslanjamo na tu nepouzdanu detekciju.
       "./node_modules/wasm-feature-detect/**",
+      "./node_modules/bmp-js/**",
+      "./node_modules/is-url/**",
+      "./node_modules/node-fetch/**",
+      "./node_modules/regenerator-runtime/**",
     ],
   },
   // Version-skew zaštita: ako korisnik ima otvorenu karticu s JS bundleom
