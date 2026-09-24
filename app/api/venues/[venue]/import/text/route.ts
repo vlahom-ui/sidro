@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { assertVenueOwner } from "@/lib/ownership";
-import { extractItemsFromText } from "@/lib/parsers/heuristics";
+import { applyDefaultTip, extractItemsFromText } from "@/lib/parsers/heuristics";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { logAudit } from "@/lib/audit";
 import { MAX_EXTRACTED_ITEMS } from "@/lib/security/fileValidation";
@@ -36,7 +36,10 @@ export const POST = withErrorHandling(async (
   if (!parsed.success) return NextResponse.json({ error: "Nevažeći podaci." }, { status: 400 });
 
   // Zalijepljeni tekst se tretira kao nepouzdan unos — samo se parsira kao plain text, nikad ne renderira kao HTML.
-  const items = extractItemsFromText(parsed.data.text).slice(0, MAX_EXTRACTED_ITEMS);
+  const items = applyDefaultTip(
+    extractItemsFromText(parsed.data.text).slice(0, MAX_EXTRACTED_ITEMS),
+    venue.default_tip
+  );
 
   const { data: importSource } = await supabase
     .from("import_sources")

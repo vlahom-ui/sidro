@@ -39,6 +39,9 @@ export const POST = withErrorHandling(async (
     tip: i.tip,
     naziv: i.naziv,
     cijena: i.cijena,
+    // Nova stavka: sidrena cijena = trenutna cijena dok korisnik ne kaže
+    // drugačije (usklađeno s pravilom "prva cijena nakon 10.9.2026. = sidrena").
+    sidrena_cijena: i.cijena,
     kategorija: i.kategorija ?? null,
   }));
 

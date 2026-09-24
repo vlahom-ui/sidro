@@ -8,7 +8,7 @@ import {
 } from "@/lib/security/fileValidation";
 import { parseCsvItems, parseXlsxItems, parseXmlItems } from "@/lib/parsers/structured";
 import { extractItemsFromDocx, extractItemsFromPdf } from "@/lib/parsers/documents";
-import { extractItemsFromText } from "@/lib/parsers/heuristics";
+import { applyDefaultTip, extractItemsFromText } from "@/lib/parsers/heuristics";
 import { extractItemsFromPdfViaOcr } from "@/lib/parsers/ocr";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { logAudit } from "@/lib/audit";
@@ -137,6 +137,8 @@ export const POST = withErrorHandling(async (
       });
     }
   }
+
+  items = applyDefaultTip(items, venue.default_tip);
 
   const { data: importSource } = await supabase
     .from("import_sources")

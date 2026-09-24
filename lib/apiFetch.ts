@@ -41,3 +41,53 @@ export async function apiFetch<T = unknown>(input: string, init?: RequestInit): 
 
   return { ok: true, data: body as T, error: null };
 }
+
+function parseXhrBody(xhr: XMLHttpRequest): unknown {
+  if (!xhr.responseText) return null;
+  try {
+    return JSON.parse(xhr.responseText);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Isto ponašanje kao apiFetch (nikad ne baca, standardizirani { ok, data,
+ * error } oblik), ali preko XMLHttpRequest umjesto fetch — fetch ne izlaže
+ * napredak uploada, dok XHR-ov upload.onprogress omogućuje stvarni
+ * postotak dok se datoteka šalje, prije nego server počne obradu.
+ */
+export function apiUploadFile<T = unknown>(
+  url: string,
+  formData: FormData,
+  onProgress?: (percent: number) => void
+): Promise<ApiResult<T>> {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+
+    xhr.onerror = () => resolve({ ok: false, data: null, error: NETWORK_ERROR });
+    xhr.ontimeout = () => resolve({ ok: false, data: null, error: NETWORK_ERROR });
+
+    xhr.onload = () => {
+      const body = parseXhrBody(xhr);
+      if (xhr.status < 200 || xhr.status >= 300) {
+        const message =
+          body && typeof body === "object" && "error" in body && typeof (body as { error?: unknown }).error === "string"
+            ? (body as { error: string }).error
+            : GENERIC_ERROR;
+        resolve({ ok: false, data: null, error: message });
+        return;
+      }
+      resolve({ ok: true, data: body as T, error: null });
+    };
+
+    xhr.send(formData);
+  });
+}

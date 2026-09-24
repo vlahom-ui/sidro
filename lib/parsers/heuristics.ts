@@ -109,6 +109,20 @@ export function extractItemsFromText(text: string): ExtractedItem[] {
   return items;
 }
 
+/**
+ * Primjenjuje objekt-razinski default tip (venues.default_tip) na sve
+ * izvučene stavke iz uvoza, umjesto oslanjanja isključivo na heuristiku
+ * (PRODUCT_UNIT_RE) koja bez dodatnog konteksta pretpostavlja "usluga".
+ * Kad default_tip nije postavljen za objekt, ponašanje ostaje nepromijenjeno.
+ */
+export function applyDefaultTip(
+  items: ExtractedItem[],
+  defaultTip: ExtractedItem["tip"] | null | undefined
+): ExtractedItem[] {
+  if (!defaultTip) return items;
+  return items.map((item) => ({ ...item, tip: defaultTip }));
+}
+
 /** Skida HTML oznake i pretvara u plain text pogodan za extractItemsFromText. */
 export function htmlToPlainText(html: string): string {
   return html

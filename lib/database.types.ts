@@ -20,6 +20,7 @@ export interface Database {
           adresa: string;
           oib: string | null;
           status: VenueStatus;
+          default_tip: ItemTip | null;
           created_at: string;
         };
         Insert: {
@@ -31,6 +32,7 @@ export interface Database {
           adresa: string;
           oib?: string | null;
           status?: VenueStatus;
+          default_tip?: ItemTip | null;
           created_at?: string;
         };
         Relationships: [];

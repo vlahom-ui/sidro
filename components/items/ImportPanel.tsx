@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ExtractedItem } from "@/lib/parsers/heuristics";
 import { ImportReview } from "./ImportReview";
-import { apiFetch } from "@/lib/apiFetch";
+import { apiFetch, apiUploadFile } from "@/lib/apiFetch";
 
 interface ImportResult {
   items: ExtractedItem[];
@@ -20,6 +20,7 @@ export function ImportPanel({ venueId }: { venueId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [extracted, setExtracted] = useState<ExtractedItem[] | null>(null);
   const [usedOcr, setUsedOcr] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   const [urls, setUrls] = useState(["", "", ""]);
   const [text, setText] = useState("");
@@ -35,12 +36,14 @@ export function ImportPanel({ venueId }: { venueId: string }) {
     }
 
     setLoading(true);
+    setUploadProgress(0);
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const { ok, data, error: apiError } = await apiFetch<ImportResult>(
+      const { ok, data, error: apiError } = await apiUploadFile<ImportResult>(
         `/api/venues/${venueId}/import/upload`,
-        { method: "POST", body: formData }
+        formData,
+        setUploadProgress
       );
       if (!ok || !data) {
         setError(apiError ?? "Uvoz nije uspio.");
@@ -50,6 +53,7 @@ export function ImportPanel({ venueId }: { venueId: string }) {
       setExtracted(data.items);
     } finally {
       setLoading(false);
+      setUploadProgress(null);
     }
   }
 
@@ -142,6 +146,21 @@ export function ImportPanel({ venueId }: { venueId: string }) {
         <form onSubmit={handleUpload} className="flex flex-col gap-3 max-w-md">
           <p className="text-sm opacity-70">PDF, DOCX, XLS/XLSX, CSV ili XML s postojećim cjenikom (maks. 15 MB).</p>
           <input type="file" name="file" accept=".pdf,.docx,.xlsx,.csv,.xml" className="text-sm" />
+          {loading && (
+            <div className="flex flex-col gap-1">
+              <div className="w-full h-2 bg-navy/10 rounded overflow-hidden">
+                <div
+                  className="h-full bg-navy transition-all duration-150"
+                  style={{ width: `${uploadProgress !== null && uploadProgress < 100 ? uploadProgress : 100}%` }}
+                />
+              </div>
+              <span className="text-xs opacity-70">
+                {uploadProgress !== null && uploadProgress < 100
+                  ? `Učitavanje datoteke... ${uploadProgress}%`
+                  : "Obrada datoteke..."}
+              </span>
+            </div>
+          )}
           <button type="submit" disabled={loading} className="btn-primary rounded px-4 py-2 font-bold self-start disabled:opacity-50">
             {loading ? "Obrada..." : "Uvezi datoteku"}
           </button>

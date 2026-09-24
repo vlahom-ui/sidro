@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { assertVenueOwner } from "@/lib/ownership";
 import { safeFetchText, SsrfBlockedError } from "@/lib/security/ssrf";
-import { extractItemsFromText, htmlToPlainText } from "@/lib/parsers/heuristics";
+import { applyDefaultTip, extractItemsFromText, htmlToPlainText } from "@/lib/parsers/heuristics";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { logAudit } from "@/lib/audit";
 import { MAX_EXTRACTED_ITEMS } from "@/lib/security/fileValidation";
@@ -37,7 +37,7 @@ export const POST = withErrorHandling(async (
   if (!parsed.success) return NextResponse.json({ error: "Nevažeći podaci (maks. 3 URL-a)." }, { status: 400 });
 
   const results: { url: string; count: number; error?: string }[] = [];
-  const allItems = [];
+  let allItems = [];
 
   for (const url of parsed.data.urls) {
     try {
@@ -51,6 +51,8 @@ export const POST = withErrorHandling(async (
       results.push({ url, count: 0, error: message });
     }
   }
+
+  allItems = applyDefaultTip(allItems, venue.default_tip);
 
   const { data: importSource } = await supabase
     .from("import_sources")

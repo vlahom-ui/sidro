@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiFetch } from "@/lib/apiFetch";
-import type { Database } from "@/lib/database.types";
+import type { Database, ItemTip } from "@/lib/database.types";
 
 type Venue = Database["public"]["Tables"]["venues"]["Row"];
 
@@ -24,6 +24,7 @@ export function NewVenueForm() {
   const [oblikObjekta, setOblikObjekta] = useState(OBLICI_OBJEKTA[0]);
   const [adresa, setAdresa] = useState("");
   const [oib, setOib] = useState("");
+  const [defaultTip, setDefaultTip] = useState<ItemTip>("usluga");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -36,7 +37,7 @@ export function NewVenueForm() {
       const { ok, data, error: apiError } = await apiFetch<{ venue: Venue }>("/api/venues", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ naziv, oblikObjekta, adresa, oib: oib || null }),
+        body: JSON.stringify({ naziv, oblikObjekta, adresa, oib: oib || null, defaultTip }),
       });
 
       if (!ok || !data) {
@@ -112,6 +113,31 @@ export function NewVenueForm() {
           onChange={(e) => setOib(e.target.value)}
           className="w-full border border-navy/30 rounded px-3 py-2 bg-transparent"
         />
+      </div>
+      <div>
+        <span className="block text-sm font-bold mb-1">Pretežno prodajete</span>
+        <div className="flex gap-4">
+          <label className="flex items-center gap-1 text-sm">
+            <input
+              type="radio"
+              checked={defaultTip === "proizvod"}
+              onChange={() => setDefaultTip("proizvod")}
+            />
+            Proizvode
+          </label>
+          <label className="flex items-center gap-1 text-sm">
+            <input
+              type="radio"
+              checked={defaultTip === "usluga"}
+              onChange={() => setDefaultTip("usluga")}
+            />
+            Usluge
+          </label>
+        </div>
+        <p className="text-xs opacity-60 mt-1">
+          Ovo je samo default za nove stavke — objekt i dalje može imati oboje, a tip svake
+          stavke uvijek možete promijeniti pojedinačno ili bulk-akcijom.
+        </p>
       </div>
 
       {error && <p className="text-alert text-sm">{error}</p>}

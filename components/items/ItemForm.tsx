@@ -22,9 +22,9 @@ export interface ItemFormValues {
   dostupnost: ItemDostupnost | "";
 }
 
-function fromItem(item?: Item): ItemFormValues {
+function fromItem(item?: Item, defaultTip?: ItemTip | null): ItemFormValues {
   return {
-    tip: item?.tip ?? "proizvod",
+    tip: item?.tip ?? defaultTip ?? "proizvod",
     naziv: item?.naziv ?? "",
     cijena: item?.cijena?.toString() ?? "",
     sidrenaCijena: item?.sidrena_cijena?.toString() ?? "",
@@ -46,18 +46,37 @@ export function ItemForm({
   onSubmit,
   onCancel,
   submitLabel,
+  defaultTip,
 }: {
   item?: Item;
   onSubmit: (values: ItemFormValues) => Promise<void>;
   onCancel: () => void;
   submitLabel: string;
+  defaultTip?: ItemTip | null;
 }) {
-  const [values, setValues] = useState<ItemFormValues>(fromItem(item));
+  const isNew = !item;
+  const [values, setValues] = useState<ItemFormValues>(fromItem(item, defaultTip));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Sidrena cijena prati cijenu dok korisnik ne uredi sidrenu cijenu ručno —
+  // samo za novu stavku (postojeća stavka ima svoju povijesnu vrijednost).
+  const [sidrenaTouched, setSidrenaTouched] = useState(false);
 
   function set<K extends keyof ItemFormValues>(key: K, value: ItemFormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));
+  }
+
+  function setCijena(value: string) {
+    setValues((v) => ({
+      ...v,
+      cijena: value,
+      sidrenaCijena: isNew && !sidrenaTouched ? value : v.sidrenaCijena,
+    }));
+  }
+
+  function setSidrenaCijena(value: string) {
+    setSidrenaTouched(true);
+    set("sidrenaCijena", value);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -118,7 +137,7 @@ export function ItemForm({
             step="0.01"
             min="0"
             value={values.cijena}
-            onChange={(e) => set("cijena", e.target.value)}
+            onChange={(e) => setCijena(e.target.value)}
             className="w-full border border-navy/30 rounded px-3 py-2 bg-transparent"
           />
         </div>
@@ -129,7 +148,7 @@ export function ItemForm({
             step="0.01"
             min="0"
             value={values.sidrenaCijena}
-            onChange={(e) => set("sidrenaCijena", e.target.value)}
+            onChange={(e) => setSidrenaCijena(e.target.value)}
             className="w-full border border-navy/30 rounded px-3 py-2 bg-transparent"
           />
           {showFirstSeenHint && (

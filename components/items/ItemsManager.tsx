@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { Database } from "@/lib/database.types";
+import type { Database, ItemTip } from "@/lib/database.types";
 import { ItemForm, type ItemFormValues } from "./ItemForm";
 import { apiFetch } from "@/lib/apiFetch";
 
@@ -27,7 +27,15 @@ function toPayload(values: ItemFormValues) {
   };
 }
 
-export function ItemsManager({ venueId, initialItems }: { venueId: string; initialItems: Item[] }) {
+export function ItemsManager({
+  venueId,
+  initialItems,
+  defaultTip,
+}: {
+  venueId: string;
+  initialItems: Item[];
+  defaultTip?: ItemTip | null;
+}) {
   const router = useRouter();
   const [items, setItems] = useState<Item[]>(initialItems);
   const [adding, setAdding] = useState(false);
@@ -111,7 +119,12 @@ export function ItemsManager({ venueId, initialItems }: { venueId: string; initi
       {bulkError && <p className="text-alert text-sm">{bulkError}</p>}
 
       {adding && (
-        <ItemForm submitLabel="Spremi stavku" onSubmit={handleCreate} onCancel={() => setAdding(false)} />
+        <ItemForm
+          submitLabel="Spremi stavku"
+          onSubmit={handleCreate}
+          onCancel={() => setAdding(false)}
+          defaultTip={defaultTip}
+        />
       )}
 
       {items.length === 0 ? (

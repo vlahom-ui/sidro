@@ -26,6 +26,7 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
    `0001_init.sql` → `0002_security_fixes.sql` → `0003_drop_old_rate_limit_fn.sql`
    → `0005_check_email_exists.sql` → `0006_email_has_account_case_insensitive.sql`
    → `0007_price_history_trigger_security_definer.sql`
+   → `0008_venue_default_tip.sql`
    → `0004_admin_notifications.sql` (0004 zahtijeva prvo deployanu edge
    funkciju — vidi korak 5 — pa je na produkciji primijenjen zadnji;
    numerički redoslijed 0004/0005/0006 ne utječe na ispravnost jer su
@@ -127,3 +128,19 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
 - Pregled uvezenih stavki (`ImportReview`) ima bulk-edit traku: "odaberi
   sve" checkbox u headeru, te za odabrane retke masovnu promjenu tipa
   (Proizvod/Usluga) i/ili cijene odjednom.
+- `venues.default_tip` (nullable, postavlja se na formi "Stvori objekt") je
+  objekt-razinski default za tip novih stavki — primjenjuje se na uvoz (PDF/
+  URL/tekst/CSV/XML/XLSX/OCR, preko `applyDefaultTip()` u
+  `lib/parsers/heuristics.ts`) i pre-popunjava tip na formi "+ Dodaj stavku".
+  Ne ograničava objekt na jedan tip, samo mijenja početnu vrijednost; tip se
+  i dalje može mijenjati pojedinačno ili bulk-akcijom.
+- Nova stavka (uvoz i ručno dodavanje) dobiva `sidrena_cijena` = `cijena` po
+  defaultu umjesto praznog polja. Kod ručnog dodavanja (`ItemForm`) sidrena
+  cijena prati unos cijene dok je korisnik ručno ne izmijeni; kod uvoza se
+  postavlja izravno u `items/batch` ruti. Postojeći "Postavi sidrenu cijenu
+  = trenutnu (za prazne)" bulk gumb ostaje za stavke koje ostanu prazne
+  (npr. ručno očišćene).
+- Upload datoteke (`ImportPanel`) prikazuje stvaran postotak napretka
+  uploada preko `XMLHttpRequest.upload.onprogress`
+  (`apiUploadFile()` u `lib/apiFetch.ts`, `fetch` ne izlaže tu informaciju),
+  a nakon 100% (server obrađuje datoteku) prikazuje "Obrada datoteke...".

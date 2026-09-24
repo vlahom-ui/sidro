@@ -11,6 +11,7 @@ const bodySchema = z.object({
   oblikObjekta: z.string().min(1).max(100),
   adresa: z.string().min(1).max(300),
   oib: z.string().max(20).optional().nullable(),
+  defaultTip: z.enum(["proizvod", "usluga"]).optional().nullable(),
 });
 
 export const POST = withErrorHandling(async (request: Request) => {
@@ -29,7 +30,7 @@ export const POST = withErrorHandling(async (request: Request) => {
     return NextResponse.json({ error: "Nevažeći podaci." }, { status: 400 });
   }
 
-  const { naziv, oblikObjekta, adresa, oib } = parsed.data;
+  const { naziv, oblikObjekta, adresa, oib, defaultTip } = parsed.data;
 
   const admin = createAdminClient();
   const baseSlug = slugify(naziv) || "objekt";
@@ -50,6 +51,7 @@ export const POST = withErrorHandling(async (request: Request) => {
       adresa,
       oib: oib || null,
       status: "draft",
+      default_tip: defaultTip ?? null,
     })
     .select()
     .single();

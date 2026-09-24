@@ -17,7 +17,11 @@ export default async function CjenikPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: venue } = await supabase.from("venues").select("id, naziv").eq("id", venueId).maybeSingle();
+  const { data: venue } = await supabase
+    .from("venues")
+    .select("id, naziv, default_tip")
+    .eq("id", venueId)
+    .maybeSingle();
   if (!venue) notFound();
 
   const { data: items } = await supabase
@@ -44,7 +48,7 @@ export default async function CjenikPage({
 
         <section>
           <h2 className="font-bold mb-3">Stavke cjenika</h2>
-          <ItemsManager venueId={venue.id} initialItems={items ?? []} />
+          <ItemsManager venueId={venue.id} initialItems={items ?? []} defaultTip={venue.default_tip} />
         </section>
       </div>
     </main>
