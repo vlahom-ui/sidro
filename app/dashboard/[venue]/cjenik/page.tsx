@@ -2,15 +2,17 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { DashboardHeader } from "@/components/DashboardHeader";
-import { ItemsManager } from "@/components/items/ItemsManager";
-import { ImportPanel } from "@/components/items/ImportPanel";
+import { CjenikWorkspace } from "@/components/items/CjenikWorkspace";
 
 export default async function CjenikPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ venue: string }>;
+  searchParams: Promise<{ cjenik?: string }>;
 }) {
   const { venue: venueId } = await params;
+  const { cjenik: cjenikParam } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -36,6 +38,12 @@ export default async function CjenikPage({
     .eq("venue_id", venueId)
     .order("created_at", { ascending: false });
 
+  const { data: cjenici } = await supabase
+    .from("cjenici")
+    .select("*")
+    .eq("venue_id", venueId)
+    .order("created_at", { ascending: false });
+
   return (
     <main className="min-h-screen">
       <DashboardHeader email={user.email ?? ""} />
@@ -47,20 +55,14 @@ export default async function CjenikPage({
           </Link>
         </div>
 
-        <section className="mb-10">
-          <h2 className="font-bold mb-3">Uvoz cjenika</h2>
-          <ImportPanel venueId={venue.id} />
-        </section>
-
-        <section>
-          <h2 className="font-bold mb-3">Stavke cjenika</h2>
-          <ItemsManager
-            venueId={venue.id}
-            initialItems={items ?? []}
-            initialItemGroups={itemGroups ?? []}
-            defaultTip={venue.default_tip}
-          />
-        </section>
+        <CjenikWorkspace
+          venueId={venue.id}
+          initialCjenici={cjenici ?? []}
+          initialItems={items ?? []}
+          initialItemGroups={itemGroups ?? []}
+          initialCjenikId={cjenikParam ?? null}
+          defaultTip={venue.default_tip}
+        />
       </div>
     </main>
   );

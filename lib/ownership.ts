@@ -16,3 +16,20 @@ export async function assertVenueOwner(
   if (!venue || venue.owner_user_id !== userId) return null;
   return venue;
 }
+
+export async function assertCjenikOwner(
+  supabase: SupabaseClient<Database>,
+  cjenikId: string,
+  userId: string
+) {
+  const { data: cjenik } = await supabase
+    .from("cjenici")
+    .select("*, venues!inner(owner_user_id)")
+    .eq("id", cjenikId)
+    .maybeSingle();
+
+  if (!cjenik || (cjenik as unknown as { venues: { owner_user_id: string } }).venues.owner_user_id !== userId) {
+    return null;
+  }
+  return cjenik;
+}

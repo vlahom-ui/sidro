@@ -16,6 +16,7 @@ const bodySchema = z.object({
   naziv: z.string().min(1).max(200),
   opis: z.string().max(2000).nullable().optional(),
   trajanje: z.string().max(100).nullable().optional(),
+  cjenikId: z.string().uuid().nullable().optional(),
   // Sigurnosna gornja granica — sprječava da jedan zahtjev pokuša odjednom
   // upisati nerazumno velik broj redaka (npr. neispravno generirana 2D matrica).
   variants: z.array(variantSchema).min(1).max(200),
@@ -39,7 +40,17 @@ export const POST = withErrorHandling(async (
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: "Nevažeći podaci." }, { status: 400 });
 
-  const { tip, naziv, opis, trajanje, variants } = parsed.data;
+  const { tip, naziv, opis, trajanje, variants, cjenikId } = parsed.data;
+
+  if (cjenikId) {
+    const { data: cjenik } = await supabase
+      .from("cjenici")
+      .select("id")
+      .eq("id", cjenikId)
+      .eq("venue_id", venueId)
+      .maybeSingle();
+    if (!cjenik) return NextResponse.json({ error: "Cjenik nije pronađen." }, { status: 404 });
+  }
 
   const { data: group, error: groupError } = await supabase
     .from("item_groups")
@@ -49,6 +60,7 @@ export const POST = withErrorHandling(async (
       naziv,
       opis: opis || null,
       trajanje: trajanje || null,
+      cjenik_id: cjenikId ?? null,
     })
     .select()
     .single();
@@ -66,6 +78,7 @@ export const POST = withErrorHandling(async (
     sidrena_cijena: v.cijena,
     item_group_id: group.id,
     variant_label: v.label,
+    cjenik_id: cjenikId ?? null,
   }));
 
   const { data: inserted, error: itemsError } = await supabase.from("items").insert(rows).select();

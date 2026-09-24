@@ -13,7 +13,15 @@ interface ImportResult {
 
 type Mode = "upload" | "url" | "tekst";
 
-export function ImportPanel({ venueId }: { venueId: string }) {
+export function ImportPanel({
+  venueId,
+  cjenikId,
+  existingItemCount = 0,
+}: {
+  venueId: string;
+  cjenikId: string | null;
+  existingItemCount?: number;
+}) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("upload");
   const [loading, setLoading] = useState(false);
@@ -112,6 +120,8 @@ export function ImportPanel({ venueId }: { venueId: string }) {
     return (
       <ImportReview
         venueId={venueId}
+        cjenikId={cjenikId}
+        existingItemCount={existingItemCount}
         initialItems={extracted}
         usedOcr={usedOcr}
         onSaved={(count) => {

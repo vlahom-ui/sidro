@@ -60,6 +60,7 @@ export interface Database {
           url_slike: string | null;
           item_group_id: string | null;
           variant_label: string | null;
+          cjenik_id: string | null;
           first_seen_at: string;
           created_at: string;
           updated_at: string;
@@ -85,6 +86,7 @@ export interface Database {
           url_slike?: string | null;
           item_group_id?: string | null;
           variant_label?: string | null;
+          cjenik_id?: string | null;
           first_seen_at?: string;
           created_at?: string;
           updated_at?: string;
@@ -100,6 +102,7 @@ export interface Database {
           naziv: string;
           opis: string | null;
           trajanje: string | null;
+          cjenik_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -109,10 +112,27 @@ export interface Database {
           naziv: string;
           opis?: string | null;
           trajanje?: string | null;
+          cjenik_id?: string | null;
           created_at?: string;
         };
         Relationships: [];
         Update: Partial<Database["public"]["Tables"]["item_groups"]["Insert"]>;
+      };
+      cjenici: {
+        Row: {
+          id: string;
+          venue_id: string;
+          naziv: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          venue_id: string;
+          naziv: string;
+          created_at?: string;
+        };
+        Relationships: [];
+        Update: Partial<Database["public"]["Tables"]["cjenici"]["Insert"]>;
       };
       price_history: {
         Row: {

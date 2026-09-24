@@ -29,11 +29,13 @@ function parseAxisValues(raw: string): string[] {
 
 export function GroupedItemForm({
   venueId,
+  cjenikId,
   defaultTip,
   onSaved,
   onCancel,
 }: {
   venueId: string;
+  cjenikId: string | null;
   defaultTip?: ItemTip | null;
   onSaved: (count: number) => void;
   onCancel: () => void;
@@ -146,6 +148,7 @@ export function GroupedItemForm({
             naziv: naziv.trim(),
             opis: opis.trim() || null,
             trajanje: trajanje.trim() || null,
+            cjenikId,
             variants,
           }),
         }

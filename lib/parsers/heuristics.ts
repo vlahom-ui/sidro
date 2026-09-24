@@ -15,12 +15,32 @@ export interface ExtractedItem {
 // Cijena s decimalama ne treba valutnu oznaku (npr. "12,50"), ali cijena bez
 // decimala MORA imati oznaku valute (npr. "35 €", "50 kn") — bez toga bi
 // svaki broj na kraju retka (količina, broj stranice...) lažno prošao kao cijena.
-const PRICE_RE = /(\d{1,5}(?:[.,]\d{2})|\d{1,5}(?=\s*(?:€|eur|kn)))(?!\d)(?:\s*(?:€|eur|kn))?\s*$/i;
+// Isto pravilo vrijedi za europski format tisućica (točka kao razdjelnik
+// tisućica, npr. "1.195 €"): bez decimalnog zareza mora imati valutu; s
+// decimalnim zarezom (npr. "1.195,50 €") ne treba, analogno običnom
+// decimalnom zapisu. Redoslijed alternacija ide od najspecifičnije prema
+// najmanje specifičnoj da "1.195,50" ne bude pogrešno razbijen na "1" +
+// ostatak od strane šireg, manje specifičnog obrasca.
+const PRICE_RE =
+  /(\d{1,3}(?:\.\d{3})+,\d{2}|\d{1,5}(?:[.,]\d{2})|\d{1,3}(?:\.\d{3})+(?=\s*(?:€|eur|kn))|\d{1,5}(?=\s*(?:€|eur|kn)))(?!\d)(?:\s*(?:€|eur|kn))?\s*$/i;
 const LEADER_DOTS_RE = /[.\-_ ]{2,}$/;
 const PRODUCT_UNIT_RE = /\b(kg|g|dag|l|ml|kom|pak|kut)\b\.?\s*$/i;
 const NOISE_LINE_RE = /^\s*(cjenik|jelovnik|meni|napomena|sadržaj|stranica \d+)\s*$/i;
 
+// Europski format tisućica: grupe od TOČNO 3 znamenke odvojene točkom (npr.
+// "1.195"), za razliku od običnog decimalnog zapisa koji ima točno 2
+// znamenke nakon separatora (npr. "35.00"). Ta razlika u duljini je ono što
+// razlikuje "razdjelnik tisućica" od "decimalni separator" bez dvoznačnosti.
+const THOUSANDS_ONLY_RE = /^\d{1,3}(\.\d{3})+$/;
+
 function parsePrice(raw: string): number {
+  if (raw.includes(",")) {
+    // Zarez je decimalni separator — sve točke prije njega su razdjelnici tisućica.
+    return Number(raw.replace(/\./g, "").replace(",", "."));
+  }
+  if (THOUSANDS_ONLY_RE.test(raw)) {
+    return Number(raw.replace(/\./g, ""));
+  }
   return Number(raw.replace(",", "."));
 }
 

@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { assertVenueOwner } from "@/lib/ownership";
 import { itemInputSchema } from "@/lib/itemSchema";
 import { withErrorHandling } from "@/lib/apiRoute";
+
+const cjenikIdSchema = z.string().uuid().nullable().optional();
 
 export const POST = withErrorHandling(async (
   request: Request,
@@ -21,6 +24,19 @@ export const POST = withErrorHandling(async (
   const json = await request.json().catch(() => null);
   const parsed = itemInputSchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: "Nevažeći podaci." }, { status: 400 });
+
+  const cjenikIdParsed = cjenikIdSchema.safeParse((json as { cjenikId?: unknown } | null)?.cjenikId);
+  const cjenikId = cjenikIdParsed.success ? cjenikIdParsed.data ?? null : null;
+
+  if (cjenikId) {
+    const { data: cjenik } = await supabase
+      .from("cjenici")
+      .select("id")
+      .eq("id", cjenikId)
+      .eq("venue_id", venueId)
+      .maybeSingle();
+    if (!cjenik) return NextResponse.json({ error: "Cjenik nije pronađen." }, { status: 404 });
+  }
 
   const d = parsed.data;
   const { data: item, error } = await supabase
@@ -41,6 +57,7 @@ export const POST = withErrorHandling(async (
       cijena_po_jedinici: d.cijenaPoJedinici,
       barkod: d.barkod,
       dostupnost: d.dostupnost,
+      cjenik_id: cjenikId,
     })
     .select()
     .single();

@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { VenueActions } from "@/components/VenueActions";
+import { CjeniciList } from "@/components/items/CjeniciList";
 
 const SOURCE_LABELS: Record<string, string> = {
   pdf: "PDF",
@@ -47,6 +48,28 @@ export default async function VenueDetailPage({
     .from("items")
     .select("id", { count: "exact", head: true })
     .eq("venue_id", venueId);
+
+  const { data: cjenici } = await supabase
+    .from("cjenici")
+    .select("id, naziv")
+    .eq("venue_id", venueId)
+    .order("created_at", { ascending: false });
+
+  const { data: itemsForCount } = await supabase
+    .from("items")
+    .select("cjenik_id")
+    .eq("venue_id", venueId)
+    .not("cjenik_id", "is", null);
+
+  const itemCountByCjenik: Record<string, number> = {};
+  for (const item of itemsForCount ?? []) {
+    if (item.cjenik_id) itemCountByCjenik[item.cjenik_id] = (itemCountByCjenik[item.cjenik_id] ?? 0) + 1;
+  }
+  const cjeniciWithCount = (cjenici ?? []).map((c) => ({
+    id: c.id,
+    naziv: c.naziv,
+    itemCount: itemCountByCjenik[c.id] ?? 0,
+  }));
 
   const publicUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/c/${venue.slug}`;
 
@@ -92,6 +115,11 @@ export default async function VenueDetailPage({
             />
           </div>
           <VenueActions venueId={venue.id} status={venue.status} />
+        </section>
+
+        <section className="mb-10">
+          <h2 className="font-bold mb-3">Cjenici</h2>
+          <CjeniciList venueId={venue.id} cjenici={cjeniciWithCount} />
         </section>
 
         <section className="mb-10">

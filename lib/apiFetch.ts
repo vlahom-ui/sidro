@@ -2,6 +2,10 @@ export interface ApiResult<T> {
   ok: boolean;
   data: T | null;
   error: string | null;
+  // HTTP status i sirovo tijelo greške — opcionalno, za pozivatelje kojima
+  // treba više od generičke poruke (npr. strukturirani 409 s dodatnim poljima).
+  status?: number;
+  errorBody?: unknown;
 }
 
 const NETWORK_ERROR = "Nije moguće povezati se sa serverom. Provjerite internetsku vezu i pokušajte ponovno.";
@@ -36,10 +40,10 @@ export async function apiFetch<T = unknown>(input: string, init?: RequestInit): 
       body && typeof body === "object" && "error" in body && typeof (body as { error?: unknown }).error === "string"
         ? (body as { error: string }).error
         : GENERIC_ERROR;
-    return { ok: false, data: null, error: message };
+    return { ok: false, data: null, error: message, status: res.status, errorBody: body };
   }
 
-  return { ok: true, data: body as T, error: null };
+  return { ok: true, data: body as T, error: null, status: res.status };
 }
 
 function parseXhrBody(xhr: XMLHttpRequest): unknown {
@@ -82,10 +86,10 @@ export function apiUploadFile<T = unknown>(
           body && typeof body === "object" && "error" in body && typeof (body as { error?: unknown }).error === "string"
             ? (body as { error: string }).error
             : GENERIC_ERROR;
-        resolve({ ok: false, data: null, error: message });
+        resolve({ ok: false, data: null, error: message, status: xhr.status, errorBody: body });
         return;
       }
-      resolve({ ok: true, data: body as T, error: null });
+      resolve({ ok: true, data: body as T, error: null, status: xhr.status });
     };
 
     xhr.send(formData);

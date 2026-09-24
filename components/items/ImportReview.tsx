@@ -8,13 +8,21 @@ interface ReviewRow extends ExtractedItem {
   include: boolean;
 }
 
+interface BatchSaveResult {
+  count: number;
+}
+
 export function ImportReview({
   venueId,
+  cjenikId,
+  existingItemCount = 0,
   initialItems,
   usedOcr = false,
   onSaved,
 }: {
   venueId: string;
+  cjenikId: string | null;
+  existingItemCount?: number;
   initialItems: ExtractedItem[];
   usedOcr?: boolean;
   onSaved: (count: number) => void;
@@ -22,6 +30,7 @@ export function ImportReview({
   const [rows, setRows] = useState<ReviewRow[]>(initialItems.map((i) => ({ ...i, include: true })));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [duplicateNames, setDuplicateNames] = useState<string[] | null>(null);
   const [bulkTip, setBulkTip] = useState<ReviewRow["tip"]>("proizvod");
   const [bulkCijena, setBulkCijena] = useState("");
 
@@ -47,8 +56,9 @@ export function ImportReview({
     setBulkCijena("");
   }
 
-  async function handleSave() {
+  async function save(mode: "add" | "replace", force: boolean) {
     setError(null);
+    setDuplicateNames(null);
     const selected = rows.filter((r) => r.include && r.naziv.trim() && r.cijena > 0);
     if (selected.length === 0) {
       setError("Nema odabranih stavki za spremanje.");
@@ -56,7 +66,7 @@ export function ImportReview({
     }
     setSaving(true);
     try {
-      const { ok, data, error: apiError } = await apiFetch<{ count: number }>(
+      const { ok, data, error: apiError, status, errorBody } = await apiFetch<BatchSaveResult>(
         `/api/venues/${venueId}/items/batch`,
         {
           method: "POST",
@@ -68,10 +78,20 @@ export function ImportReview({
               cijena: r.cijena,
               kategorija: r.kategorija ?? null,
             })),
+            cjenikId,
+            mode,
+            force,
           }),
         }
       );
       if (!ok || !data) {
+        if (status === 409) {
+          const duplicates = (errorBody as { duplicates?: string[] } | null)?.duplicates;
+          if (Array.isArray(duplicates) && duplicates.length > 0) {
+            setDuplicateNames(duplicates);
+            return;
+          }
+        }
         setError(apiError ?? "Spremanje nije uspjelo.");
         return;
       }
@@ -79,6 +99,25 @@ export function ImportReview({
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleAdd() {
+    save("add", false);
+  }
+
+  function handleConfirmDuplicates() {
+    save("add", true);
+  }
+
+  function handleReplace() {
+    if (
+      !confirm(
+        `Ovo će obrisati svih ${existingItemCount} postojećih stavki u ovom cjeniku i zamijeniti ih novo uvezenim stavkama. Ova radnja se ne može poništiti. Nastaviti?`
+      )
+    ) {
+      return;
+    }
+    save("replace", true);
   }
 
   if (rows.length === 0) {
@@ -177,15 +216,42 @@ export function ImportReview({
         ))}
       </div>
 
+      {duplicateNames && (
+        <div className="border border-alert/40 rounded px-3 py-2 flex flex-col gap-2">
+          <p className="text-alert text-sm">
+            Ove stavke već postoje u ovom cjeniku (isti naziv i cijena): {duplicateNames.join(", ")}.
+          </p>
+          <button
+            type="button"
+            onClick={handleConfirmDuplicates}
+            disabled={saving}
+            className="rounded px-3 py-1.5 border border-alert text-alert font-bold text-sm self-start disabled:opacity-50"
+          >
+            {saving ? "Spremanje..." : "Svejedno dodaj (dupliciraj)"}
+          </button>
+        </div>
+      )}
+
       {error && <p className="text-alert text-sm">{error}</p>}
 
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="btn-primary rounded px-4 py-2 font-bold disabled:opacity-50 self-start"
-      >
-        {saving ? "Spremanje..." : "Spremi odabrane stavke u cjenik"}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={handleAdd}
+          disabled={saving}
+          className="btn-primary rounded px-4 py-2 font-bold disabled:opacity-50"
+        >
+          {saving ? "Spremanje..." : existingItemCount > 0 ? "Dodaj ovim stavkama" : "Spremi odabrane stavke u cjenik"}
+        </button>
+        {existingItemCount > 0 && (
+          <button
+            onClick={handleReplace}
+            disabled={saving}
+            className="rounded px-4 py-2 border border-navy/30 font-bold disabled:opacity-50"
+          >
+            Zamijeni postojeće stavke u ovom cjeniku ({existingItemCount})
+          </button>
+        )}
+      </div>
     </div>
   );
 }

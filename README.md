@@ -29,6 +29,7 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
    → `0008_venue_default_tip.sql`
    → `0009_rls_performance_optimization.sql`
    → `0010_item_groups.sql`
+   → `0011_cjenici.sql`
    → `0004_admin_notifications.sql` (0004 zahtijeva prvo deployanu edge
    funkciju — vidi korak 5 — pa je na produkciji primijenjen zadnji;
    numerički redoslijed 0004/0005/0006 ne utječe na ispravnost jer su
@@ -189,3 +190,44 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   Namjerno izvan opsega: auto-parser (PDF/OCR/URL/tekst) se ne proširuje da
   pokuša prepoznati multi-tier tablice — rizik pogrešno parsirane cijene
   objavljene kao "službena" je gori od ručnog unosa kroz ovaj UI.
+- **Europski format tisućica u price-parseru** (`lib/parsers/heuristics.ts`)
+  — `PRICE_RE` je ranije lomio "1.195 €" na naziv "...1." + cijenu 195.00,
+  jer je `\d{1,5}` stao na prvoj točki misleći da je decimalni zapis. Regex
+  sad ima zasebnu granu za `\d{1,3}(?:\.\d{3})+` (grupe od TOČNO 3 znamenke
+  nakon točke = razdjelnik tisućica, za razliku od TOČNO 2 znamenke kod
+  običnog decimalnog zapisa) — s obaveznom valutom kad nema decimalnog
+  zareza (isto pravilo kao za cijele brojeve bez decimala) i bez nje kad ga
+  ima (npr. "1.195,50 €"). `parsePrice()` normalizira: zarez u stringu znači
+  "sve točke prije njega su tisućice, ukloni ih"; bez zareza ali s grupama
+  od točno 3 znamenke nakon točke znači isto; inače nepromijenjeno (postojeće
+  ponašanje za "35,00 €" i "35 €" ostaje netaknuto).
+- **Zaštita od duplikata pri uvozu** (`items/batch` ruta) — privremena
+  zakrpa dok korisnik nema svjestan odabir cjenika: prije insertanja
+  provjerava postoje li već stavke s identičnim (normaliziran naziv, cijena
+  zaokružena na centima) u istom cjeniku (ili istom objektu za stavke bez
+  cjenika), i ako da, vraća 409 s popisom dupliciranih naziva umjesto
+  tihog dupliciranja — klijent nudi "Svejedno dodaj" koji ponovno šalje
+  zahtjev s `force: true`.
+- **Cjenici — kontejner iznad items za organizaciju po objektu**
+  (`0011_cjenici.sql`) — rješava slučaj kad objekt ima više cjenika (npr.
+  "Restoranski meni" vs "Cjenik izleta 2026", ili stara/nova verzija istog
+  cjenika kroz vrijeme). NE mijenja zakonski izvoz: `items/[venue]/generate`
+  ruta i dalje agregira SVE proizvod/usluga stavke iz SVIH cjenika objekta
+  u jednu datoteku po tipu (nije dirana). `cjenici` tablica (samo
+  vlasnički RLS — cjenici se nigdje ne prikazuju javno odvojeno) +
+  `items.cjenik_id`/`item_groups.cjenik_id` (`on delete cascade` — brisanje
+  cjenika briše i njegove stavke, namjerno predvidljivija radnja nego da
+  odjednom postanu "negrupirane"). Postojeće stavke bez `cjenik_id` ostaju
+  vidljive kroz posebnu "Bez cjenika — starije stavke" opciju u
+  `CjenikSelector`u, i dalje uključene u izvoz.
+  `CjenikWorkspace` orkestrira: `CjenikSelector` (dropdown + "+ Novi
+  cjenik", prvi posjet bez ijednog cjenika prisiljava kreiranje prvog),
+  pamćenje zadnje odabranog cjenika po objektu u `localStorage`, filtriranje
+  `items`/`item_groups` na klijentu prema odabranom cjeniku (URL query param
+  `?cjenik=` kao initial vrijednost, npr. s `/dashboard/{venue}` liste).
+  Ponovni uvoz u cjenik koji već ima stavke nudi izričit izbor "Dodaj ovim
+  stavkama" (prolazi kroz duplicate-check gore) ili "Zamijeni postojeće
+  stavke u ovom cjeniku" (`mode: "replace"` — briše postojeće stavke tog
+  cjenika prije insertanja, uz `confirm()` potvrdu). `CjeniciList` na
+  `/dashboard/{venue}` briše cjenik bez dodatne potvrde ako je prazan, uz
+  potvrdu s točnim brojem stavki ako nije.

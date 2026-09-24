@@ -31,11 +31,13 @@ function toPayload(values: ItemFormValues) {
 
 export function ItemsManager({
   venueId,
+  cjenikId,
   initialItems,
   initialItemGroups,
   defaultTip,
 }: {
   venueId: string;
+  cjenikId: string | null;
   initialItems: Item[];
   initialItemGroups: ItemGroup[];
   defaultTip?: ItemTip | null;
@@ -55,11 +57,12 @@ export function ItemsManager({
     const { ok, data, error } = await apiFetch<{ item: Item }>(`/api/venues/${venueId}/items`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(toPayload(values)),
+      body: JSON.stringify({ ...toPayload(values), cjenikId }),
     });
     if (!ok || !data) throw new Error(error ?? "Greška.");
     setItems((prev) => [data.item, ...prev]);
     setAdding(false);
+    router.refresh();
   }
 
   async function handleUpdate(itemId: string, values: ItemFormValues) {
@@ -71,6 +74,7 @@ export function ItemsManager({
     if (!ok || !data) throw new Error(error ?? "Greška.");
     setItems((prev) => prev.map((i) => (i.id === itemId ? data.item : i)));
     setEditingId(null);
+    router.refresh();
   }
 
   async function handleDelete(itemId: string) {
@@ -83,6 +87,7 @@ export function ItemsManager({
       return;
     }
     setItems((prev) => prev.filter((i) => i.id !== itemId));
+    router.refresh();
   }
 
   async function handleSetAnchor() {
@@ -203,6 +208,7 @@ export function ItemsManager({
       {addingGroup && (
         <GroupedItemForm
           venueId={venueId}
+          cjenikId={cjenikId}
           defaultTip={defaultTip}
           onCancel={() => setAddingGroup(false)}
           onSaved={(count) => {
