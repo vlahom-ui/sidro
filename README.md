@@ -27,6 +27,7 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
    → `0005_check_email_exists.sql` → `0006_email_has_account_case_insensitive.sql`
    → `0007_price_history_trigger_security_definer.sql`
    → `0008_venue_default_tip.sql`
+   → `0009_rls_performance_optimization.sql`
    → `0004_admin_notifications.sql` (0004 zahtijeva prvo deployanu edge
    funkciju — vidi korak 5 — pa je na produkciji primijenjen zadnji;
    numerički redoslijed 0004/0005/0006 ne utječe na ispravnost jer su
@@ -151,3 +152,12 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   uploada preko `XMLHttpRequest.upload.onprogress`
   (`apiUploadFile()` u `lib/apiFetch.ts`, `fetch` ne izlaže tu informaciju),
   a nakon 100% (server obrađuje datoteku) prikazuje "Obrada datoteke...".
+- Performance optimizacija (`0009_rls_performance_optimization.sql`, prema
+  Supabase performance advisoru): svih 12 RLS politika s `auth.uid()`
+  promijenjeno u `(select auth.uid())` (planner evaluira jednom po upitu
+  umjesto po retku — isto ponašanje, brže na skali) + dodani nedostajući
+  indeksi na `consents.venue_id` i `image_candidates.matched_item_id`.
+  Namjerno NE dirano: dvostruke permisivne SELECT politike na
+  `venues`/`items`/`generated_files` (vlasnička + javna — namjeran dizajn,
+  spajanje u OR bi otežalo čitljivost za zanemarivu dobit) i "unused index"
+  nalazi (baza premlada da bi bili mjerodavni).
