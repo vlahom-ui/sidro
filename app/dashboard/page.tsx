@@ -17,6 +17,9 @@ export default async function DashboardPage() {
     .select("*")
     .order("created_at", { ascending: false });
 
+  const { data: kategorije } = await supabase.from("venue_kategorije").select("*").order("redoslijed");
+  const { data: podkategorije } = await supabase.from("venue_podkategorije").select("*").order("redoslijed");
+
   return (
     <main className="min-h-screen">
       <DashboardHeader email={user.email ?? ""} />
@@ -52,7 +55,7 @@ export default async function DashboardPage() {
           <p className="text-sm opacity-70 mb-6">Još nemate niti jedan objekt. Dodajte prvi ispod.</p>
         )}
 
-        <NewVenueForm />
+        <NewVenueForm kategorije={kategorije ?? []} podkategorije={podkategorije ?? []} />
       </div>
     </main>
   );

@@ -8,7 +8,7 @@ import { withErrorHandling } from "@/lib/apiRoute";
 
 const bodySchema = z.object({
   naziv: z.string().min(1).max(200),
-  oblikObjekta: z.string().min(1).max(100),
+  podkategorijaId: z.string().uuid(),
   adresa: z.string().min(1).max(300),
   oib: z.string().max(20).optional().nullable(),
   defaultTip: z.enum(["proizvod", "usluga"]).optional().nullable(),
@@ -30,7 +30,20 @@ export const POST = withErrorHandling(async (request: Request) => {
     return NextResponse.json({ error: "Nevažeći podaci." }, { status: 400 });
   }
 
-  const { naziv, oblikObjekta, adresa, oib, defaultTip } = parsed.data;
+  const { naziv, podkategorijaId, adresa, oib, defaultTip } = parsed.data;
+
+  // Podkategorija se ne uzima na vjeru s klijenta — dohvat servera je izvor
+  // istine za oblik_objekta tekst (Sidrova interna kategorizacija, ne
+  // službeni šifrarnik — vidi napomenu uz polje na formi).
+  const { data: podkategorija } = await supabase
+    .from("venue_podkategorije")
+    .select("id, naziv")
+    .eq("id", podkategorijaId)
+    .maybeSingle();
+
+  if (!podkategorija) {
+    return NextResponse.json({ error: "Nevažeća kategorija objekta." }, { status: 400 });
+  }
 
   const admin = createAdminClient();
   const baseSlug = slugify(naziv) || "objekt";
@@ -47,11 +60,12 @@ export const POST = withErrorHandling(async (request: Request) => {
       owner_user_id: user.id,
       naziv,
       slug,
-      oblik_objekta: oblikObjekta,
+      oblik_objekta: podkategorija.naziv,
       adresa,
       oib: oib || null,
       status: "draft",
       default_tip: defaultTip ?? null,
+      podkategorija_id: podkategorija.id,
     })
     .select()
     .single();

@@ -4,24 +4,23 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiFetch } from "@/lib/apiFetch";
 import type { Database, ItemTip } from "@/lib/database.types";
+import { VenuePodkategorijaCombobox } from "./VenuePodkategorijaCombobox";
 
 type Venue = Database["public"]["Tables"]["venues"]["Row"];
+type VenueKategorija = Database["public"]["Tables"]["venue_kategorije"]["Row"];
+type VenuePodkategorija = Database["public"]["Tables"]["venue_podkategorije"]["Row"];
 
-const OBLICI_OBJEKTA = [
-  "restoran",
-  "kafić",
-  "trgovina",
-  "frizerski salon",
-  "kozmetički salon",
-  "obrt",
-  "ostalo",
-];
-
-export function NewVenueForm() {
+export function NewVenueForm({
+  kategorije,
+  podkategorije,
+}: {
+  kategorije: VenueKategorija[];
+  podkategorije: VenuePodkategorija[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [naziv, setNaziv] = useState("");
-  const [oblikObjekta, setOblikObjekta] = useState(OBLICI_OBJEKTA[0]);
+  const [podkategorijaId, setPodkategorijaId] = useState<string | null>(null);
   const [adresa, setAdresa] = useState("");
   const [oib, setOib] = useState("");
   const [defaultTip, setDefaultTip] = useState<ItemTip>("usluga");
@@ -31,13 +30,19 @@ export function NewVenueForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (!podkategorijaId) {
+      setError("Odaberite kategoriju objekta.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { ok, data, error: apiError } = await apiFetch<{ venue: Venue }>("/api/venues", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ naziv, oblikObjekta, adresa, oib: oib || null, defaultTip }),
+        body: JSON.stringify({ naziv, podkategorijaId, adresa, oib: oib || null, defaultTip }),
       });
 
       if (!ok || !data) {
@@ -76,20 +81,17 @@ export function NewVenueForm() {
       </div>
       <div>
         <label className="block text-sm font-bold mb-1" htmlFor="oblik">
-          Oblik objekta
+          Kategorija objekta
         </label>
-        <select
-          id="oblik"
-          value={oblikObjekta}
-          onChange={(e) => setOblikObjekta(e.target.value)}
-          className="w-full border border-navy/30 rounded px-3 py-2 bg-transparent"
-        >
-          {OBLICI_OBJEKTA.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
+        <VenuePodkategorijaCombobox
+          kategorije={kategorije}
+          podkategorije={podkategorije}
+          value={podkategorijaId}
+          onChange={setPodkategorijaId}
+        />
+        <p className="text-xs opacity-60 mt-1">
+          Interna kategorizacija radi organizacije — ne službeni šifrarnik (npr. NKD).
+        </p>
       </div>
       <div>
         <label className="block text-sm font-bold mb-1" htmlFor="adresa">

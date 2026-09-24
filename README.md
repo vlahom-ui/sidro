@@ -32,6 +32,7 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
    → `0011_cjenici.sql`
    → `0012_image_import_source_type.sql`
    → `0013_first_seen_at_nullable.sql`
+   → `0014_venue_kategorije.sql`
    → `0004_admin_notifications.sql` (0004 zahtijeva prvo deployanu edge
    funkciju — vidi korak 5 — pa je na produkciji primijenjen zadnji;
    numerički redoslijed 0004/0005/0006 ne utječe na ispravnost jer su
@@ -276,3 +277,24 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   `ItemForm`-ov postojeći hint ("stavka nije postojala 10.9.2026.") sad
   eksplicitno provjerava `first_seen_at !== null` prije usporedbe datuma,
   jer se ne smije prikazati dok pravi datum još nije poznat.
+- **Sidrova poslovna kategorizacija objekata** (`0014_venue_kategorije.sql`)
+  — zamjena plosnatog dropdowna "Oblik objekta" (7 opcija) dvorazinskom
+  taksonomijom: 8 glavnih kategorija × ~5 podkategorija svaka (41 ukupno),
+  odabir kroz pretraživi combobox (`VenuePodkategorijaCombobox`) umjesto
+  liste. **Ovo je Sidrova vlastita interna kategorizacija radi organizacije,
+  NE tvrdnja o službenom zakonskom šifrarniku** (npr. NKD ili razredba iz
+  Zakona o ugostiteljskoj djelatnosti) — napomena uz polje na formi
+  ("Interna kategorizacija radi organizacije — ne službeni šifrarnik")
+  eksplicitno to naglašava da se ne stvori pogrešan dojam kod korisnika ili
+  inspekcije. `venue_kategorije`/`venue_podkategorije` su referentne tablice
+  (RLS `for select using (true)` — statička taksonomija, ništa osjetljivo,
+  potrebna na formi prije nego korisnik uopće ima venue). `venues.oblik_objekta`
+  (postojeći text stupac, koristi ga `lib/generate/filename.ts` za naziv
+  datoteke) ostaje netaknut kao stupac — kod odabira podkategorije server
+  (`POST /api/venues`) dohvaća njen naziv i njime popunjava `oblik_objekta`
+  (klijentu se ne vjeruje slobodni tekst, samo `podkategorijaId`), uz novi
+  `venues.podkategorija_id` FK za buduću strukturiranu upotrebu (npr. pametan
+  default za `default_tip` — izvan opsega ove runde). Nullable, bez defaulta:
+  postojeći objekti (svi kreirani prije ove promjene) zadržavaju svoj stari
+  `oblik_objekta` tekst nedirnut, `podkategorija_id` im ostaje `null` — ne
+  pokušava se retroaktivno pogoditi kojoj bi kategoriji odgovarali.
