@@ -9,8 +9,29 @@ const nextConfig = {
   // dinamički građenog fs puta u runtimeu, ne preko import/require, pa ih
   // Next.jev automatski file-tracing ne prepoznaje sam od sebe — moraju se
   // eksplicitno uključiti u serverless bundle rute koja radi OCR fallback.
+  //
+  // tesseract.js/tesseract.js-core: createWorker() u Node okruženju pokreće
+  // worker preko `new Worker(workerPath)` (worker_threads) s dinamički
+  // građenom putanjom (path.join(__dirname, ...) u
+  // tesseract.js/src/worker/node/defaultOptions.js) — to Next.jev statički
+  // file-tracing ne prati (nije require/import poziv), pa
+  // worker-script/node/index.js i njegovi transitivni require-ovi
+  // (worker-script/index.js preko `require('..')`, pa dalje utils/constants)
+  // ispadnu iz produkcijskog paketa. Posljedica u produkciji: "Cannot find
+  // module '..'" i zahtjev visi do hard timeouta umjesto da baci grešku.
+  // Rješenje: eksplicitno uključi cijeli paket, isto kao ocr-data gore.
   outputFileTracingIncludes: {
-    "/api/venues/*/import/upload": ["./lib/ocr-data/**"],
+    "/api/venues/*/import/upload": [
+      "./lib/ocr-data/**",
+      "./node_modules/tesseract.js/**",
+      "./node_modules/tesseract.js-core/**",
+      // Datoteke forsirano uključene gore (glob include) se ne skeniraju
+      // dalje za tranzitivne require-ove — wasm-feature-detect (ovisnost
+      // worker-script/node/getCore.js) mora biti naveden posebno, inače
+      // ostane izostavljen unatoč tome što je gornji include "pokrio"
+      // datoteku koja ga zahtijeva.
+      "./node_modules/wasm-feature-detect/**",
+    ],
   },
   // Version-skew zaštita: ako korisnik ima otvorenu karticu s JS bundleom
   // od PRETHODNOG Vercel deploya i klikne na <Link> nakon što je novi deploy
