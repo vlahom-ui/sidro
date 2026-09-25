@@ -148,6 +148,10 @@ export function ImportPanel({
         existingItemCount={existingItemCount}
         initialItems={extracted}
         usedOcr={usedOcr}
+        onCancel={() => {
+          setExtracted(null);
+          setUsedOcr(false);
+        }}
         onSaved={(count) => {
           setExtracted(null);
           setUsedOcr(false);

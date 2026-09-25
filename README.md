@@ -388,3 +388,15 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   (server-only paket privremeno stubban samo za trajanje lokalnog test
   skripta, vraćen na izvorno stanje odmah nakon, node_modules nije dio
   git repozitorija).
+- **Popravak dead-end-a u pregledu uvoza kad nema izvučenih stavki**
+  (`ImportReview.tsx`) — nađeno tijekom stvarnog klik-kroz testiranja
+  (paralelna sesija s live pristupom pregledniku): kad uvoz vrati 0
+  prepoznatih stavki, komponenta je prikazivala SAMO statičan tekst "Nije
+  pronađena nijedna stavka za pregled." bez ijednog klikabilnog elementa
+  — ni tabovi za odabir drugog načina uvoza ni gumb natrag nisu bili
+  dostupni, korisnik je bio zaglavljen dok ručno ne osvježi stranicu.
+  Dodan `onCancel` prop (iz `ImportPanel.tsx`, resetira `extracted` na
+  `null` čime se forma za uvoz opet prikaže) i gumb "← Natrag na uvoz" u
+  tom stanju. Dosljednosti radi, dodan je i opći gumb "Odustani" na
+  glavni prikaz pregleda (kad ima stavki) — ni ondje prije nije postojao
+  način izlaska iz pregleda osim stvarnog spremanja.

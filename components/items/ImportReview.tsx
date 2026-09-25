@@ -19,6 +19,7 @@ export function ImportReview({
   initialItems,
   usedOcr = false,
   onSaved,
+  onCancel,
 }: {
   venueId: string;
   cjenikId: string | null;
@@ -26,6 +27,7 @@ export function ImportReview({
   initialItems: ExtractedItem[];
   usedOcr?: boolean;
   onSaved: (count: number) => void;
+  onCancel: () => void;
 }) {
   const [rows, setRows] = useState<ReviewRow[]>(initialItems.map((i) => ({ ...i, include: true })));
   const [saving, setSaving] = useState(false);
@@ -121,7 +123,18 @@ export function ImportReview({
   }
 
   if (rows.length === 0) {
-    return <p className="text-sm opacity-70">Nije pronađena nijedna stavka za pregled.</p>;
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-sm opacity-70">Nije pronađena nijedna stavka za pregled.</p>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded px-4 py-2 border border-navy/30 font-bold self-start"
+        >
+          ← Natrag na uvoz
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -251,6 +264,14 @@ export function ImportReview({
             Zamijeni postojeće stavke u ovom cjeniku ({existingItemCount})
           </button>
         )}
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="rounded px-4 py-2 border border-navy/30 font-bold disabled:opacity-50"
+        >
+          Odustani
+        </button>
       </div>
     </div>
   );
