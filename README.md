@@ -574,7 +574,7 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
      posuda. Svih 5 mjesta gdje je postojao `confirm()`:
      `VenueActions.tsx` (brisanje objekta), `CjeniciList.tsx` (brisanje
      cjenika), `ItemsManager.tsx` (brisanje stavke), `DeleteAccountForm.
-     tsx` (upozorenje o nepovratnosti prije brisanja računa — koraк s
+     tsx` (upozorenje o nepovratnosti prije brisanja računa — korak s
      lozinkom OSTAJE nepromijenjen, modal je samo dodatni vizualni sloj
      oko postojeće potvrde), `ImportReview.tsx` (zamjena postojećih
      stavki pri uvozu).
@@ -585,3 +585,55 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   stanje, dinamična CTA labela, breadcrumb navigacija, in-app modal
   ponašanje (uključujući da modal ne blokira ostatak stranice/React
   state kao native `confirm()`) čekaju korisnikovu live provjeru.
+- **Dio 4 foolproof brief: dijakritici/duge nazive u generiranom sadržaju,
+  prazan/neprepoznat upload** — testni zadatak (#4 iz istog briefa,
+  double-submit zaštita, već odrađen u Dio 3 rundi). Metodologija ista kao
+  Dio 2: sintetički test podaci + izravno pokretanje STVARNIH funkcija iz
+  repozitorija preko `npx tsx` (server-only stub privremeno, vraćen odmah
+  nakon, node_modules diff potvrđen prazan). **Rezultat: 0 pravih bugova
+  — sve granične vrijednosti već su obrađene u postojećem kodu.**
+  - **#1/#2 dijakritici i duge nazive u generatoru** (`lib/generate/
+    files.ts`) — 9/9 testova prošlo: hrvatski dijakritici (č ć š đ ž)
+    nepromijenjeni kroz CSV i XML round-trip (parsirano natrag i
+    uspoređeno bajt-za-bajt), naziv od točno 300 znakova (DB/Zod max)
+    nepromijenjen u oba formata, CSV escaping ispravan za navodnike/
+    točka-zarez/newline unutar polja, XML escaping ispravan za sva
+    5 specijalnih znakova (`& < > " '`), 5 stavki s različitim
+    dijakriticima zadržavaju točan redoslijed. Naziv se namjerno NE
+    transliterira u sadržaju (za razliku od naziva DATOTEKE u
+    `filename.ts`) — zakonski tekst mora ostati izvoran.
+  - **#2 duge nazive na ulazu** — provjereno (čitanjem + potvrđeno testom
+    iznad da 300-znakovni naziv preživi generator) da SVA tri mjesta gdje
+    naziv stavke ulazi u sustav već rade `.slice(0, 300)` odn.
+    `zod .max(300)`: `lib/parsers/heuristics.ts:177` (PDF/DOCX/OCR/tekst/
+    URL uvoz), `lib/parsers/structured.ts:46` (CSV/XLSX/XML uvoz),
+    `lib/itemSchema.ts` i `items/batch` ruta (ručni unos) — dosljedno,
+    nema puta kojim bi predugačak naziv mogao proći `zod` validaciju na
+    spremanju i srušiti cijeli batch.
+  - **#3 prazan/neprepoznat upload, svi tipovi** — 20/20 testova prošlo
+    preko `lib/parsers/structured.ts`, `lib/parsers/documents.ts` i
+    `lib/security/fileValidation.ts` izravno: prazan/garbage CSV i XML
+    (uključ. malformed XML) vraćaju `[]` bez bacanja iznimke (Papa/
+    fast-xml-parser su namjerno lenientni); prazan/garbage XLSX BEZ zip
+    potpisa isto vraća `[]` bez bacanja (SheetJS pada natrag na plain-text
+    parsing umjesto bacanja — bezopasno jer `rowToItem` svejedno odbaci
+    retke bez naziv+cijena stupaca) — ali STVARNO oštećen/odsječen XLSX
+    SA ispravnim ZIP magic bytes (realističan slučaj prekinutog uploada)
+    ispravno baca iznimku koju `upload/route.ts` hvata i vraća 422; prazan/
+    garbage PDF i DOCX oboje bacaju iznimku, uhvaćeno. `detectSourceType`
+    (`lib/security/fileValidation.ts`) potvrđen kao prva linija obrane:
+    prazan `.pdf`/`.xlsx` → `null` (nema magic bytes, nisu na fallback
+    whitelisti), prazan `.csv` → `"csv"` (fallback po ekstenziji, ispravno
+    jer prazan sadržaj nije "binaran"), plain-text preimenovan u `.xlsx`
+    → `null` (magic bytes ne odgovaraju ekstenziji), binarni sadržaj s
+    null-bajtovima nazvan `.csv` → `null` (`looksBinary` provjera sprječava
+    lažni CSV). Asimetrija PDF-a naspram DOCX/XLSX (garbage PDF završava
+    kao tiho "0 stavki" umjesto eksplicitnog 422) je NAMJERNO ponašanje,
+    ne bug — postojeći OCR fallback princip iz Dio 2 runde ("uvijek pokušaj
+    OCR prije nego odustaneš") isto tako guta grešku standardne
+    ekstrakcije; korisnik svejedno vidi jasno "0 stavki" stanje s izlazom
+    (popravljeno u Dio 2 dead-end bugu).
+  `npm run typecheck` i `npm run build` prolaze čisto (bez promjena koda
+  ove runde — testiranje je potvrdilo postojeću implementaciju, nije
+  zahtijevalo popravak). Test skripte i node_modules/server-only stub
+  potpuno uklonjeni nakon, `git status` čist.
