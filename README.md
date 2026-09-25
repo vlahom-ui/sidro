@@ -637,3 +637,41 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   ove runde — testiranje je potvrdilo postojeću implementaciju, nije
   zahtijevalo popravak). Test skripte i node_modules/server-only stub
   potpuno uklonjeni nakon, `git status` čist.
+- **"Koraci do objave" — vidljiv checklist napretka** (`components/
+  PublishChecklist.tsx`, novi; ožičen u `app/dashboard/[venue]/page.tsx`)
+  — umjesto posrednog zaključivanja gdje je korisnik u procesu (iz toga
+  koji su gumbi vidljivi/skriveni, uvedeno u prethodnoj rundi), eksplicitan
+  panel sa svih 5 koraka, status svakog izveden IZRAVNO iz podataka već
+  dohvaćenih na stranici (server komponenta, bez vlastitog klijentskog
+  statea):
+  1. Objekt kreiran (uvijek gotovo na ovoj stranici)
+  2/3. Cjenik kreiran / Stavke dodane — `cjenikCount > 0` / `itemCount > 0`
+  4. Cjenik generiran — NIJE samo "postoji bilo koja generirana datoteka":
+     zahtijeva da SVAKA zakonska kategorija koja ima barem jednu stavku
+     ima i svoju trenutnu, ne-zastarjelu generiranu datoteku (ponovno
+     koristi `staleTips` izračun iz upozorenja o zastarjelosti uvedenog u
+     prethodnoj rundi — ista logika, ne duplicirana).
+  5. Cjenik objavljen — `venue.status === "published"`.
+  Svaki nedovršen korak je klik: koraci 2/3 vode na `/cjenik` stranicu
+  (`next/link`), koraci 4/5 skroluju na `#cjenik-actions` (obična `<a>`
+  sidra na id dodan na sekciju s `VenueActions`-om, ne triggeriraju samu
+  akciju izravno s checklist klika — namjerno, da se izbjegne slučajno
+  pokretanje generiranja/objave bez da korisnik vidi i svjesno klikne
+  stvaran gumb za tu nepovratnu/vidljivu akciju). Kad su svi koraci
+  gotovi, panel se sklapa u jednu liniju "Sve objavljeno ✓"; budući da je
+  cijela logika izvedena iz svježih podataka sa servera na svakom
+  učitavanju/`router.refresh()`-u (koji `VenueActions` već zove nakon
+  generate/publish/delete), panel se AUTOMATSKI ponovno raširi čim neki
+  korak prestane biti ispunjen — bez potrebe za posebnim "zapamti da je
+  bilo sklopljeno" stateom kojeg bi trebalo posebno resetirati.
+  **Test — DB-level** (Supabase MCP, sintetički venue): potvrđeno da korak
+  4 ispravno prijavljuje NEPOTPUNO kad jedna od dvije kategorije sa
+  stavkama nema svoju generiranu datoteku (`tips_with_items_count=2,
+  tips_generated_count=1` → `false`), i POTPUNO kad obje imaju
+  (`tips_generated_count=2` → `true`); test podaci obrisani nakon.
+  `npm run typecheck` i `npm run build` prolaze čisto. **Nije testirano
+  uživo**: stvaran klik-kroz sva tri scenarija iz zadatka (nov objekt →
+  prvi korak klikabilan; nakon pune objave → sklopljeno; izmjena stavke
+  nakon objave bez re-generiranja → ponovno rašireno) — logika je
+  ručno simulirana kroz kod i potvrđena DB-level testom za korak 4, ali
+  stvaran klik u pregledniku čeka korisnikovu provjeru.

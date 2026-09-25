@@ -6,6 +6,7 @@ import { DashboardHeader } from "@/components/DashboardHeader";
 import { VenueActions } from "@/components/VenueActions";
 import { CjeniciList } from "@/components/items/CjeniciList";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { PublishChecklist, type PublishStep } from "@/components/PublishChecklist";
 
 const TIP_LABEL_GENITIVE: Record<string, string> = { proizvod: "proizvoda", usluga: "usluga" };
 
@@ -117,6 +118,21 @@ export default async function VenueDetailPage({
     .filter(([tip, genAt]) => (maxUpdatedAtByTip.get(tip) ?? 0) > genAt)
     .map(([tip]) => tip);
 
+  // "Cjenik generiran" je gotov tek kad SVAKA kategorija koja ima barem
+  // jednu stavku ima i svoju trenutnu (ne-zastarjelu) generiranu datoteku —
+  // ne samo "postoji BILO KOJA generirana datoteka".
+  const tipsWithItems = Array.from(maxUpdatedAtByTip.keys());
+  const generatedComplete =
+    tipsWithItems.length > 0 && tipsWithItems.every((tip) => generatedAtByTip.has(tip)) && staleTips.length === 0;
+
+  const publishSteps: PublishStep[] = [
+    { label: "Objekt kreiran", done: true },
+    { label: "Cjenik kreiran", done: cjenikCount > 0, href: `/dashboard/${venue.id}/cjenik` },
+    { label: "Stavke dodane", done: actualItemCount > 0, href: `/dashboard/${venue.id}/cjenik` },
+    { label: "Cjenik generiran", done: generatedComplete, href: "#cjenik-actions" },
+    { label: "Cjenik objavljen", done: venue.status === "published", href: "#cjenik-actions" },
+  ];
+
   const publicUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/c/${venue.slug}`;
 
   return (
@@ -142,6 +158,8 @@ export default async function VenueDetailPage({
           </a>
         </p>
 
+        <PublishChecklist steps={publishSteps} />
+
         <div className="flex gap-3 mb-8">
           <Link href={`/dashboard/${venue.id}/cjenik`} className="btn-primary rounded px-4 py-2 font-bold">
             {primaryCtaLabel}
@@ -162,7 +180,7 @@ export default async function VenueDetailPage({
           </div>
         )}
 
-        <section className="mb-10 flex flex-col sm:flex-row gap-6 items-start">
+        <section id="cjenik-actions" className="mb-10 flex flex-col sm:flex-row gap-6 items-start">
           {(cjenikCount > 0 || actualItemCount > 0) && (
             <div className="border border-navy/20 rounded p-3 bg-white/40">
               <Image
