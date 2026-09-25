@@ -5,9 +5,21 @@ import { useState } from "react";
 import type { VenueStatus } from "@/lib/database.types";
 import { apiFetch } from "@/lib/apiFetch";
 
-export function VenueActions({ venueId, status }: { venueId: string; status: VenueStatus }) {
+export function VenueActions({
+  venueId,
+  status,
+  venueNaziv,
+  cjenikCount,
+  itemCount,
+}: {
+  venueId: string;
+  status: VenueStatus;
+  venueNaziv: string;
+  cjenikCount: number;
+  itemCount: number;
+}) {
   const router = useRouter();
-  const [loading, setLoading] = useState<"publish" | "generate" | null>(null);
+  const [loading, setLoading] = useState<"publish" | "generate" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handlePublishToggle() {
@@ -38,6 +50,29 @@ export function VenueActions({ venueId, status }: { venueId: string; status: Ven
         setError(apiError ?? "Generiranje nije uspjelo.");
         return;
       }
+      router.refresh();
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function handleDeleteVenue() {
+    const scope =
+      cjenikCount > 0 || itemCount > 0
+        ? ` i sve unutra (${cjenikCount} ${cjenikCount === 1 ? "cjenik" : "cjenika"}, ${itemCount} ${itemCount === 1 ? "stavku" : "stavki"})`
+        : "";
+    const confirmed = confirm(`Obrisati objekt "${venueNaziv}"${scope}? Ova radnja se ne može poništiti.`);
+    if (!confirmed) return;
+
+    setError(null);
+    setLoading("delete");
+    try {
+      const { ok, error: apiError } = await apiFetch(`/api/venues/${venueId}`, { method: "DELETE" });
+      if (!ok) {
+        setError(apiError ?? "Brisanje objekta nije uspjelo.");
+        return;
+      }
+      router.push("/dashboard");
       router.refresh();
     } finally {
       setLoading(null);
@@ -81,6 +116,15 @@ export function VenueActions({ venueId, status }: { venueId: string; status: Ven
         </a>
       </div>
       {error && <p className="text-alert text-sm">{error}</p>}
+      <div>
+        <button
+          onClick={handleDeleteVenue}
+          disabled={loading !== null}
+          className="text-alert underline text-sm disabled:opacity-50"
+        >
+          {loading === "delete" ? "Brisanje..." : "Obriši objekt"}
+        </button>
+      </div>
     </div>
   );
 }

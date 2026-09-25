@@ -1,6 +1,13 @@
 import Link from "next/link";
 
-export default function LandingPage() {
+export default async function LandingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const params = await searchParams;
+  const accountDeleted = params["racun-obrisan"] === "1";
+
   return (
     <main className="min-h-screen flex flex-col">
       <header className="px-4 py-6 flex items-center justify-between max-w-4xl mx-auto w-full">
@@ -14,6 +21,14 @@ export default function LandingPage() {
           </Link>
         </nav>
       </header>
+
+      {accountDeleted && (
+        <div className="max-w-4xl mx-auto w-full px-4">
+          <p className="border border-navy/20 rounded px-4 py-3 bg-navy-light text-sm">
+            Vaš račun je uspješno obrisan. Hvala što ste koristili Sidro.
+          </p>
+        </div>
+      )}
 
       <section className="flex-1 flex items-center">
         <div className="max-w-4xl mx-auto px-4 py-16">

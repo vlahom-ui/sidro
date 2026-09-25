@@ -442,3 +442,72 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   s DELETE handlerom ne postoji uopće). Namjerno nisu izmišljeni/dodani u
   ovoj rundi (destruktivna funkcionalnost je proizvodna odluka, ne
   "popravak greške u postojećem kodu") — čeka eksplicitan zahtjev.
+- **Samoposlužno brisanje objekta i korisničkog računa** — eksplicitno
+  zatraženo nakon gornjeg audit nalaza. Dvije nove rute + dva nova UI-a:
+  - `app/api/venues/[venue]/route.ts` (novi file, DELETE handler) —
+    `assertVenueOwner`, prebrojava cjenike/stavke prije brisanja radi
+    audit zapisa i UI potvrde, eksplicitno briše `audit_log` retke po
+    `venue_id` PRIJE brisanja objekta (FK `audit_log.venue_id` je
+    `on delete set null`, ne `cascade` — korisnik izričito traži brisanje
+    tih redaka, ne osirotjele reference), zatim briše sam `venues` redak
+    što FK cascade povlači `items`, `item_groups`, `price_history` (preko
+    `items`), `cjenici`, `import_sources`, `generated_files` i
+    `image_candidates`. Na kraju upisuje `venue_delete` audit zapis BEZ
+    `venue_id` (objekt više ne postoji, FK bi pukao) — naziv/broj stavki
+    idu u `details` kao tekst.
+  - `components/VenueActions.tsx` — novi gumb "Obriši objekt", isti
+    obrazac potvrde kao postojeće brisanje cjenika u `CjeniciList.tsx`
+    (broj cjenika/stavki koji nestaju u `confirm()` dijalogu prije
+    slanja zahtjeva). Nakon uspjeha, redirect na `/dashboard`.
+  - `app/api/account/route.ts` (novi file, DELETE handler) — zahtijeva
+    lozinku u tijelu zahtjeva i server-side ponovnu autentikaciju
+    (`signInWithPassword`, isti obrazac kao `ChangePasswordForm`) prije
+    ikakvog brisanja — sesijski cookie sam po sebi ne dokazuje "upravo
+    sad za računalom". Briše `audit_log` retke i po `venue_id` (za sve
+    objekte korisnika) i po `user_id` (retci bez `venue_id`, npr. login
+    događaji — `audit_log.user_id` nema FK prema `auth.users` pa se ne
+    bi obrisali sami od sebe). Zatim poziva
+    `createAdminClient().auth.admin.deleteUser(user.id)` — service-role
+    Admin API, jer obična RLS sesija ne može obrisati vlastiti
+    `auth.users` redak. Brisanje tog retka FK cascade povlači SVE objekte
+    korisnika (`venues.owner_user_id`) pa time i sve njihove
+    items/cjenici/itd. kao gore, plus `consents` (`consents.user_id` je
+    `on delete cascade`) — bez potrebe za ručnim brisanjem tih tablica.
+    Na kraju upisuje `account_delete` audit zapis s `userId` (bez FK-a na
+    `user_id`, dopušteno i nakon što redak u `auth.users` više ne
+    postoji — namjerno zadržan trag da je račun obrisan).
+  - `components/DeleteAccountForm.tsx` (novi file) — na `/account`, ispod
+    `ChangePasswordForm`. Sažeti gumb "Obriši moj račun" koji otvara formu
+    s poljem za lozinku, `confirm()` dijalogom s jasnim upozorenjem o
+    nepovratnosti prije slanja, i inline error prikazom (npr. kriva
+    lozinka). Nakon uspjeha: `supabase.auth.signOut()` na klijentu, pa
+    redirect na `/?racun-obrisan=1` — `app/page.tsx` prikazuje kratku
+    potvrdnu poruku kad je taj query param prisutan.
+  - **Test — DB-level, NE end-to-end** (sandbox nema odlazni HTTPS pristup
+    do `sidroapp.com`/`*.supabase.co`, pa live browser test iz ove sesije
+    nije moguć): kroz Supabase MCP, na potpuno sintetičkim podacima (test
+    `auth.users` retci s `@example.invalid` email adresama, obrisani
+    odmah nakon testa, nikad stvarni korisnički podaci), ručno
+    reproducirana TOČNA SQL logika obje rute:
+    1. Brisanje objekta — kreiran sintetički venue sa po 1 retkom u
+       `items`, `item_groups`, `price_history` (auto preko triggera),
+       `cjenici`, `import_sources`, `generated_files`,
+       `image_candidates`, `audit_log`; pokrenuta ista `DELETE FROM
+       audit_log WHERE venue_id=...` + `DELETE FROM venues WHERE id=...`
+       sekvenca — svih 8 tablica potvrđeno na 0 redaka nakon, korisnički
+       redak namjerno netaknut (venue-delete ne smije obrisati račun).
+    2. Brisanje računa — kreiran drugi sintetički korisnik s venueom,
+       stavkom, DVA `audit_log` retka (jedan vezan uz venue, jedan bez
+       venue_id) i jednim `consents` retkom; pokrenuto brisanje
+       `audit_log` po `venue_id` i po `user_id`, pa `DELETE FROM
+       auth.users WHERE id=...` (isti krajnji efekt kao Admin API poziv,
+       budući da GoTrue interno radi obično SQL brisanje tog retka) —
+       potvrđeno na 0: `auth.users`, `venues`, `items`, `audit_log`
+       (oba retka) i `consents`.
+    Oba sintetička test korisnika i sve povezane test podatke u
+    potpunosti uklonjeni nakon testa (potvrđeno upitom, 0 preostalih
+    `test-%@example.invalid` redaka). `npm run typecheck` i `npm run
+    build` prolaze čisto. **Nije testirano** (izvan dosega DB-level
+    testa, čeka korisnikovu live provjeru kao i dosad): stvaran klik na
+    gumbe u pregledniku, UX poruka o krivoj lozinci uživo, ponašanje kad
+    Admin API poziv (mrežni poziv prema GoTrue) padne usred zahtjeva.

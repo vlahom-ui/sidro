@@ -124,7 +124,13 @@ export default async function VenueDetailPage({
               unoptimized
             />
           </div>
-          <VenueActions venueId={venue.id} status={venue.status} />
+          <VenueActions
+            venueId={venue.id}
+            status={venue.status}
+            venueNaziv={venue.naziv}
+            cjenikCount={cjeniciWithCount.length}
+            itemCount={itemCount ?? 0}
+          />
         </section>
 
         <section className="mb-10">

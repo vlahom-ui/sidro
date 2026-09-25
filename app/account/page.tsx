@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
+import { DeleteAccountForm } from "@/components/DeleteAccountForm";
 import { DashboardHeader } from "@/components/DashboardHeader";
 
 export default async function AccountPage() {
@@ -18,6 +19,11 @@ export default async function AccountPage() {
         <h1 className="text-xl font-bold mb-6">Postavke računa</h1>
         <p className="text-sm mb-6">{user.email}</p>
         <ChangePasswordForm email={user.email ?? ""} />
+
+        <hr className="border-navy/10 my-10" />
+
+        <h2 className="font-bold mb-3">Brisanje računa</h2>
+        <DeleteAccountForm />
       </div>
     </main>
   );
