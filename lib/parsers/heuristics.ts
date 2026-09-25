@@ -35,7 +35,15 @@ export interface ExtractedItem {
 // ostatak od strane šireg, manje specifičnog obrasca.
 const PRICE_RE =
   /(\d{1,3}(?:\.\d{3})+,\d{2}|\d{1,5}(?:[.,]\d{2})|\d{1,3}(?:\.\d{3})+(?=\s*(?:€|eur|kn))|\d{1,5}(?=\s*(?:€|eur|kn)))(?!\d)(?:\s*(?:€|eur|kn))?\s*$/i;
-const LEADER_DOTS_RE = /[.\-_ ]{2,}$/;
+// Razdjelnik između naziva i cijene NA ISTOM retku — ili niz od 2+ "leader
+// dots"/crtica/podvlaka (npr. "Espresso ..... 2,00 €"), ili JEDAN znak
+// tipičnog razdjelnika (crtica, en-dash, em-dash, dvotočka, elipsa) okružen
+// proizvoljnim razmacima (npr. "Limoncello Spritz — 12,90 €", vrlo čest
+// obrazac na stvarnim hrvatskim jelovnicima). Bez em/en-dash u skupu ostaje
+// zalijepljen na kraj naziva jer .trim() briše samo whitespace, ne
+// interpunkciju — potvrđeno stvarnim produkcijskim podatkom (199/199
+// stavki na jednom objektu).
+const TRAILING_SEPARATOR_RE = /\s*(?:[.\-_]{2,}|[-–—:…])\s*$/;
 const PRODUCT_UNIT_RE = /\b(kg|g|dag|l|ml|kom|pak|kut)\b\.?\s*$/i;
 const NOISE_LINE_RE = /^\s*(cjenik|jelovnik|meni|napomena|sadržaj|stranica \d+)\s*$/i;
 // Redak koji izgleda kao naslov dokumenta (npr. "CJENIK IZLETA 2026",
@@ -111,7 +119,7 @@ export function extractItemsFromText(text: string): ExtractedItem[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (!line.priceMatch) continue;
-    const inlineNaziv = line.text.slice(0, line.priceMatch.index).replace(LEADER_DOTS_RE, "").trim();
+    const inlineNaziv = line.text.slice(0, line.priceMatch.index).replace(TRAILING_SEPARATOR_RE, "").trim();
     if (inlineNaziv) continue;
 
     const prev1 = i - 1 >= 0 ? lines[i - 1] : null;
@@ -157,7 +165,7 @@ export function extractItemsFromText(text: string): ExtractedItem[] {
       continue;
     }
 
-    let naziv = line.text.slice(0, line.priceMatch.index).replace(LEADER_DOTS_RE, "").trim();
+    let naziv = line.text.slice(0, line.priceMatch.index).replace(TRAILING_SEPARATOR_RE, "").trim();
     naziv = naziv.replace(/\s{2,}/g, " ");
     let nameUncertain = false;
     if (!naziv && pendingNameIndex !== null) {

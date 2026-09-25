@@ -821,3 +821,58 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
     stvaran izgled napomene o nepotpunoj adresi u pregledniku, stvaran
     prikaz "Ulica Broj, Grad" na javnoj `/c/{slug}` stranici — sve čeka
     korisnikovu live provjeru.
+- **Bug (visok prioritet, stvaran klijent): crtica prije cijene ostajala
+  zalijepljena na naziv** — prijavljeno kao "199/199 stavki na objektu
+  'Zuzori' imaju naziv poput 'Limoncello Spritz —'". Uzrok potvrđen
+  čitanjem koda PRIJE ikakve izmjene: `LEADER_DOTS_RE = /[.\-_ ]{2,}$/` u
+  `lib/parsers/heuristics.ts` uklanja obični hyphen `-` (jer je u skupu
+  znakova), ali NE em-dash `—` (U+2014) ni en-dash `–` (U+2013), koji su
+  potpuno drugi Unicode znakovi izvan tog skupa — `.trim()` iza toga briše
+  samo whitespace, ne interpunkciju, pa crtica ostaje zalijepljena na kraj
+  naziva kad god retku prethodi obrazac "Naziv — Cijena" bez ijednog
+  drugog razdjelnika. Potvrđeno upitom na produkciju: SAMO objekt "zuzori"
+  pogođen (199/199 stavki), nijedan drugi objekt u bazi.
+  - **Popravak parsera** (`lib/parsers/heuristics.ts`) — `LEADER_DOTS_RE`
+    preimenovan u `TRAILING_SEPARATOR_RE` i proširen:
+    `/\s*(?:[.\-_]{2,}|[-–—:…])\s*$/` — ili niz od 2+ "leader dots"/crtica/
+    podvlaka (nepromijenjeno postojeće ponašanje za "Espresso ..... 2,00
+    €"), ILI JEDAN znak iz {hyphen, en-dash, em-dash, dvotočka, elipsa-
+    glyph} okružen proizvoljnim razmacima. Korišten na oba mjesta u
+    datoteci gdje se prije koristio stari regex (inline-naziv provjera u
+    prvom prolazu, i glavna ekstrakcija naziva).
+  - **Test — pravi kod preko `npx tsx`, 19/19 prošlo**: regresija
+    potvrđena za sve postojeće obrasce (bez razdjelnika, leader dots,
+    jedan hyphen, 2-retka CAPS, 3-retka CAPS, 3-retka bez CAPS s
+    `nameUncertain`, dijakritici, INTERNI hyphen u nazivu poput
+    "Coca-Cola" namjerno NETAKNUT jer regex djeluje samo na kraju stringa)
+    plus novi slučajevi (em-dash, en-dash, dvotočka bez razmaka, elipsa-
+    glyph bez razmaka, em-dash bez razmaka prije cijene, em-dash uz
+    apostrof u nazivu). Novi fixture — reprezentativan 12-stavki uzorak u
+    STVARNOM Zuzori stilu (kokteli + vina, "Naziv — Cijena €") — svih 12
+    izvučeno, nijedan naziv ne završava crticom.
+    Napomena: jedan od postojećih regresijskih testova iz ranije runde
+    (3-retka bez CAPS obrazac) je u ovoj rundi PRVI PUT stvarno pokrenut
+    kroz kod (raniji test u toj rundi bio je opisan, ne izvršen) — otkrio
+    da moj vlastiti test imao krivo očekivanje (očekivao prev2 "Miješana
+    Stavka test" umjesto dokumentiranog prev1 "najbliži prethodni redak");
+    kôd radi točno kako njegov vlastiti komentar opisuje, popravljeno
+    očekivanje u testu, ne kôd.
+  - **Čišćenje postojećih produkcijskih podataka** — DIREKTNO preko
+    Supabase MCP-a (dry-run `SELECT` pregled prvo, potvrđeno 0 rezultata
+    koji bi postali prazan string nakon čišćenja, minimalna duljina
+    nakon 4 znaka, tek onda `UPDATE`): `UPDATE items SET naziv =
+    regexp_replace(naziv, '\s*[-–—:…]+\s*$', '') WHERE naziv ~
+    '[-–—:…]\s*$'` — bez `venue_id` ograničenja, radi provjere na CIJELOJ
+    bazi kako je zadatak tražio, ne samo na "zuzori". Pogodilo točno 199
+    redaka, svi na "zuzori" (potvrđeno prije i poslije — 0 preostalih na
+    cijeloj bazi). `item_groups.naziv` provjeren istim upitom — 0
+    pogodaka, nedirano (grupirane usluge se ne stvaraju kroz ovaj parser).
+    Upisan `items_naziv_cleanup` audit zapis na "zuzori" objektu s punim
+    obrazloženjem, novi label dodan u `ACTION_LABELS` na stranici loga.
+  - `npm run typecheck` i `npm run build` prolaze čisto.
+  - **Korisnička akcija potrebna**: objavljena CSV/XML datoteka na
+    "zuzori" i dalje sadrži stare (krive) nazive dok se ručno ne klikne
+    "Generiraj/Ažuriraj cjenik" — podaci u bazi su ispravni, ali
+    postojeća generirana datoteka nije regenerirana automatski (izvan
+    dosega ove sesije — nema pristupa pravoj Vercel/aplikacijskoj rundi
+    da se ruta pozove izravno, po dizajnu ove sesije).
