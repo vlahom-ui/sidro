@@ -9,6 +9,7 @@ import { apiFetch, apiUploadFile } from "@/lib/apiFetch";
 interface ImportResult {
   items: ExtractedItem[];
   usedOcr?: boolean;
+  results?: { url: string; count: number; error?: string }[];
 }
 
 type Mode = "upload" | "url" | "tekst";
@@ -90,6 +91,20 @@ export function ImportPanel({
       });
       if (!ok || !data) {
         setError(apiError ?? "Uvoz nije uspio.");
+        return;
+      }
+      // Ruta vraća 200 čak i kad SVI URL-ovi pojedinačno padnu (npr. SSRF
+      // blokada, nevažeća adresa, stranica ne odgovara) — po-URL razlog je
+      // u data.results, ali dosad se nigdje nije prikazivao, pa je korisnik
+      // vidio samo generičku "Nije pronađena nijedna stavka za pregled."
+      // bez ikakvog traga zašto. Kad nema nijedne izvučene stavke, prikaži
+      // konkretan razlog po URL-u umjesto ulaska u prazan pregled.
+      if (data.items.length === 0 && data.results && data.results.length > 0) {
+        const reasons = data.results
+          .filter((r) => r.error)
+          .map((r) => `${r.url}: ${r.error}`)
+          .join(" · ");
+        setError(reasons || "Nije pronađena nijedna stavka na unesenim adresama.");
         return;
       }
       setUsedOcr(false);

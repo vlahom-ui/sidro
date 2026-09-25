@@ -26,6 +26,15 @@ const PRICE_RE =
 const LEADER_DOTS_RE = /[.\-_ ]{2,}$/;
 const PRODUCT_UNIT_RE = /\b(kg|g|dag|l|ml|kom|pak|kut)\b\.?\s*$/i;
 const NOISE_LINE_RE = /^\s*(cjenik|jelovnik|meni|napomena|sadržaj|stranica \d+)\s*$/i;
+// Redak koji izgleda kao naslov dokumenta (npr. "CJENIK IZLETA 2026",
+// "JELOVNIK 2026") — širi od NOISE_LINE_RE gore (koji hvata SAMO čisto
+// "cjenik"/"jelovnik" bez ičega drugoga). Koristi se isključivo da se takav
+// redak isključi iz kandidata za NAZIV stavke u lookback logici ispod (nikad
+// kao opći pre-filter, jer bi to moglo slučajno pojesti pravu stavku poput
+// "Meni degustacija 45,00 €" koja sadrži riječ "meni" ALI i cijenu — ovaj
+// regex se zato primjenjuje samo na retke za koje je već utvrđeno da NEMAJU
+// cijenu).
+const TITLE_LINE_RE = /^\s*(cjenik|jelovnik|meni|price\s*list|menu)\b/i;
 
 // Europski format tisućica: grupe od TOČNO 3 znamenke odvojene točkom (npr.
 // "1.195"), za razliku od običnog decimalnog zapisa koji ima točno 2
@@ -48,18 +57,23 @@ function isCapsLine(line: string): boolean {
   return line.length <= 60 && line === line.toUpperCase() && /[A-ZČĆŠĐŽ]/.test(line);
 }
 
-const MAX_NAME_LOOKBACK = 4;
-
 /**
- * Heuristička ekstrakcija stavki iz plain-text sadržaja. Podržava dva čest
+ * Heuristička ekstrakcija stavki iz plain-text sadržaja. Podržava tri čest
  * oblika jelovnika:
  *  1) "naziv ..... cijena" na istom retku (npr. "Espresso 2,00 €")
- *  2) NAZIV (caps) / opis / cijena na tri odvojena retka — čest kod
- *     kopiranog teksta iz PDF-a s desno poravnatim cijenama, gdje se naziv,
- *     opis i cijena razbiju u zasebne retke. U tom slučaju retak s cijenom
- *     nema svoj naziv na istom retku, pa se traži najbliži prethodni
- *     CAPS redak (prije bilo kojeg ranijeg retka s cijenom) i koristi kao
- *     naziv stavke.
+ *  2) NAZIV (caps) / cijena na dva odvojena retka, ili NAZIV (caps) / opis /
+ *     cijena na tri odvojena retka — čest kod kopiranog teksta iz PDF-a s
+ *     desno poravnatim cijenama, gdje se naziv, opis i cijena razbiju u
+ *     zasebne retke. Naziv se traži TOČNO jedan ili dva retka iznad cijene
+ *     (ne dalje — širi lookback bi mogao pogrešno pokupiti naslov dokumenta
+ *     ili naziv PRETHODNE, nepovezane stavke kao naziv trenutne).
+ *  3) Naziv (obično malim/mixed-case slovima, bez posebne stilizacije) /
+ *     cijena na dva odvojena retka — čest kod OCR-a fotografija i
+ *     jednostavnih popisa bez CAPS naslova. Kad ni redak iznad cijene ni
+ *     redak dva iznad nisu prepoznati kao pouzdan CAPS naziv, najbliži
+ *     prethodni redak (koji nije ni cijena ni naslov dokumenta poput
+ *     "CJENIK ...") se svejedno koristi kao naziv, bez obzira na veliko/malo
+ *     slovo — bolje približan naziv nego tiho izgubljena stavka.
  * Klasificira tip proizvod/usluga po jedinici mjere. Korisnik uvijek
  * pregledava i ispravlja rezultat prije spremanja.
  */
@@ -76,7 +90,7 @@ export function extractItemsFromText(text: string): ExtractedItem[] {
   }));
 
   // Prvi prolaz: za retke koji sadrže SAMO cijenu (nema naziva na istom
-  // retku), rezerviraj najbliži prethodni CAPS redak kao naziv te stavke.
+  // retku), rezerviraj naziv s jednog od (najviše) dva prethodna retka.
   const consumedAsName = new Set<number>();
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -84,12 +98,23 @@ export function extractItemsFromText(text: string): ExtractedItem[] {
     const inlineNaziv = line.text.slice(0, line.priceMatch.index).replace(LEADER_DOTS_RE, "").trim();
     if (inlineNaziv) continue;
 
-    for (let back = i - 1, steps = 0; back >= 0 && steps < MAX_NAME_LOOKBACK; back--, steps++) {
-      const candidate = lines[back];
-      if (candidate.priceMatch) break; // prethodna stavka — ne idi dalje unatrag
-      if (candidate.isCaps && !consumedAsName.has(back)) {
-        consumedAsName.add(back);
-        break;
+    const prev1 = i - 1 >= 0 ? lines[i - 1] : null;
+    const prev2 = i - 2 >= 0 ? lines[i - 2] : null;
+    const isUsableCapsName = (l: (typeof lines)[number]) => l.isCaps && !TITLE_LINE_RE.test(l.text);
+
+    if (prev1 && !prev1.priceMatch && !consumedAsName.has(i - 1)) {
+      if (isUsableCapsName(prev1)) {
+        // Obrazac 2 (dva retka): NAZIV (caps) / cijena.
+        consumedAsName.add(i - 1);
+      } else if (prev2 && !prev2.priceMatch && isUsableCapsName(prev2) && !consumedAsName.has(i - 2)) {
+        // Obrazac 2 (tri retka): NAZIV (caps) / opis / cijena.
+        consumedAsName.add(i - 2);
+      } else if (!TITLE_LINE_RE.test(prev1.text)) {
+        // Obrazac 3: nema pouzdanog CAPS kandidata u blizini — koristi
+        // najbliži prethodni redak kakav god bio (osim ako je i on sam
+        // naslov dokumenta, u kojem slučaju je bolje ne pogoditi naziv nego
+        // pogriješiti).
+        consumedAsName.add(i - 1);
       }
     }
   }

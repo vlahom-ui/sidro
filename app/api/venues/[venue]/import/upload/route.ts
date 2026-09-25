@@ -126,15 +126,32 @@ export const POST = withErrorHandling(async (
           items = await extractItemsFromPdf(buffer);
           break;
       }
-    } catch {
+    } catch (err) {
+      if (sourceType !== "pdf") {
+        await logAudit({
+          userId: user.id,
+          venueId,
+          action: "import_upload",
+          outcome: "failure",
+          details: `Parsiranje ${sourceType} nije uspjelo`,
+        });
+        return NextResponse.json({ error: "Obrada datoteke nije uspjela." }, { status: 422 });
+      }
+      // Standardna PDF tekst-ekstrakcija (pdf-parse) zna baciti iznimku na
+      // inače ispravnom PDF-u čiji content stream njen (stariji, bundlani)
+      // pdf.js ne zna parsirati (potvrđeno testom: reportlab-generirani PDF
+      // -> "Command token too long"). Ne odustaj odmah — tretiraj kao "nema
+      // teksta" i pusti OCR fallback ispod da pokuša: to je potpuno odvojen
+      // put preko pdfjs-dist rasterizacije koji ne koristi pdf-parse, pa ista
+      // greška ondje ne postoji.
+      items = [];
       await logAudit({
         userId: user.id,
         venueId,
         action: "import_upload",
-        outcome: "failure",
-        details: `Parsiranje ${sourceType} nije uspjelo`,
+        outcome: "warning",
+        details: `Standardna PDF ekstrakcija nije uspjela (${err instanceof Error ? err.message : "nepoznata greška"}) — pokušavam OCR fallback`,
       });
-      return NextResponse.json({ error: "Obrada datoteke nije uspjela." }, { status: 422 });
     }
 
     if (!items || items.length === 0) {

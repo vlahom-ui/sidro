@@ -344,3 +344,47 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   Poruka za slučaj "sve stavke već imaju sidrenu cijenu" sad je eksplicitno
   drugačija ("nema promjena") od slučaja "postavljeno za N stavki" —
   ranije je oboje prolazilo kroz identičan generički tekst.
+- **Foolproof hardening runda — 3 stvarna buga nađena sustavnim testiranjem
+  parsera** (ne ad-hoc) — generirani su sintetički PDF/DOCX/XLSX/CSV/foto
+  fixturi za sva 3 tipa objekta (restoran/trgovina/turoperator) s hrvatskim
+  dijakriticima, i stvarne parser funkcije iz repozitorija pokrenute
+  lokalno (izvan HTTP rute/auth, direktan Node poziv) protiv njih:
+  - `app/api/venues/[venue]/import/upload/route.ts` — kad `pdf-parse`
+    baci iznimku na inače ispravnom PDF-u (potvrđeno: reportlab-generirani
+    PDF -> "bad XRef entry"/"Command token too long", vjerojatno pogađa i
+    PDF-ove iz drugih generatora koje ovaj stariji bundlani pdf.js ne zna
+    parsirati), ruta je ODMAH vraćala 422 bez pokušaja OCR fallbacka —
+    iako je OCR fallback (potpuno odvojen put preko `pdfjs-dist`
+    rasterizacije, ne koristi `pdf-parse`) na ISTOM PDF-u uspješno izvukao
+    stavke. Sad se iznimka iz standardne PDF ekstrakcije tretira kao "nema
+    teksta" i pušta na OCR fallback, umjesto odmah odustati.
+  - `lib/parsers/heuristics.ts` — "3-retka" lookback (naziv na CAPS retku
+    iznad cijene) tražio je CAPS kandidata do 4 retka unatrag bez
+    ograničenja koliko je udaljen od trenutne cijene, pa je za obrazac
+    "Naziv (mixed-case, bez CAPS-a) / cijena" (čest kod OCR-a fotografija
+    i jednostavnih popisa, bez posebne stilizacije) mogao pogrešno
+    "posuditi" nepovezan CAPS naslov dokumenta udaljen 2+ retka unatrag
+    (npr. cijeli naslov "CJENIK IZLETA 2026" postao je naziv PRVE stavke
+    ispod njega, dok su DRUGA i TREĆA stavka bile potpuno tiho izgubljene
+    — nisu bile ni caps ni cijena redak pa nisu bile prepoznate ni kao
+    naziv ni kao kategorija). Popravljeno: lookback sad strogo ograničen
+    na dokumentirani obrazac (1 ili 2 retka), s eksplicitnim fallbackom na
+    najbliži prethodni redak (bez obzira na veliko/malo slovo) kad nema
+    pouzdanog CAPS kandidata u tom dosegu, i eksplicitnim isključenjem
+    redaka koji izgledaju kao naslov dokumenta ("CJENIK ...", "JELOVNIK
+    ...") iz kandidata za naziv stavke.
+  - `components/items/ImportPanel.tsx` — uvoz s URL-a (`/api/venues/
+    [venue]/import/url`) već je vraćao specifičan razlog po URL-u kad
+    dohvat padne (SSRF blokada, nevažeća adresa, stranica ne odgovara —
+    `lib/security/ssrf.ts` ima solidnu SSRF zaštitu: whitelist protokola,
+    DNS provjera protiv privatnih raspona, ručno praćenje redirekcija,
+    ograničenje veličine odgovora i preko content-length i streamano) —
+    ali frontend je taj `results[].error` posve odbacivao i prikazivao
+    samo generičko "Nije pronađena nijedna stavka za pregled." bez traga
+    zašto. Sad se, kad nema nijedne izvučene stavke, prikazuje konkretan
+    razlog po URL-u.
+  Sve troje potvrđeno regresijskim testom u istoj test skripti nakon
+  popravka (47 PASS / 0 FAIL) — vidi commit poruku za detalje metodologije
+  (server-only paket privremeno stubban samo za trajanje lokalnog test
+  skripta, vraćen na izvorno stanje odmah nakon, node_modules nije dio
+  git repozitorija).
