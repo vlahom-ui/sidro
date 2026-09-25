@@ -400,3 +400,21 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   tom stanju. Dosljednosti radi, dodan je i opći gumb "Odustani" na
   glavni prikaz pregleda (kad ima stavki) — ni ondje prije nije postojao
   način izlaska iz pregleda osim stvarnog spremanja.
+- **Oznaka nesigurnog naziva u pregledu uvoza** (`lib/parsers/heuristics.ts`,
+  `ImportReview.tsx`) — nalaz iz stvarnog klik-kroz testiranja: "3-retka"
+  obrazac (naziv/opis/cijena na odvojenim recima) bez IJEDNOG CAPS signala
+  negdje u blizini nema pouzdan lokalni način razlikovati "ovo je naziv"
+  od "ovo je opis ispod naziva" (potvrđeno testom: naziv i opis identične
+  duljine u riječima ne daju razliku, jedini raniji signal — CAPS — po
+  definiciji ovdje ne postoji). Radije se uvijek nešto pogodi nego stavka
+  tiho nestane iz popisa (stariji bug — teško uočljivo u dugom popisu od
+  stotine redaka), ali sad se takav pogodak eksplicitno OBILJEŽAVA: novo
+  `ExtractedItem.nameUncertain` polje, postavljeno kad je naziv pogođen
+  preko fallback grane BEZ pouzdanog CAPS kandidata u blizini. UI
+  (`ImportReview`) prikazuje sažetak na vrhu ("N stavki ima nesiguran
+  naziv..."), žuti obrub oko retka i ⚠ oznaku pored polja za naziv — isti
+  vizualni jezik kao postojeće OCR upozorenje. Namjerno blago konzervativno
+  (radije prijavi lažni pozitiv nego propusti stvaran slučaj): stavka se
+  označava čim postoji BILO KOJI drugi ne-cijena redak dva iznad koji je
+  teoretski mogao biti pravi naziv, čak i kad je algoritam u tom
+  konkretnom slučaju ispravno pogodio (potvrđeno testom).

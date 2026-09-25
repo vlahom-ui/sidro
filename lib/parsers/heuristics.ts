@@ -10,6 +10,18 @@ export interface ExtractedItem {
    * namjerno unesen podatak korisnika.
    */
   tipExplicit?: boolean;
+  /**
+   * True kad je naziv "3-retka" obrasca (naziv/opis/cijena na odvojenim
+   * retcima) pogođen BEZ pouzdanog CAPS signala — tada se koristi najbliži
+   * prethodni redak kao naziv, ali kad ni taj ni redak iznad njega nisu
+   * CAPS, nema pouzdanog načina razlikovati "ovo je naziv" od "ovo je opis
+   * ispod naziva" (npr. "Miješana Stavka test" / "Opis bez velikih slova u
+   * naslovu" / "18 €" — bez CAPS-a strukturno neразличиве). Radije uvijek
+   * nešto pogodi nego stavku tiho izgubi (korisnik lakše ispravi vidljivo
+   * krivi naziv nego primijeti da mu redak posve nedostaje u dugom popisu),
+   * ali UI mora to jasno označiti da korisnik zna gdje posebno provjeriti.
+   */
+  nameUncertain?: boolean;
 }
 
 // Cijena s decimalama ne treba valutnu oznaku (npr. "12,50"), ali cijena bez
@@ -92,6 +104,10 @@ export function extractItemsFromText(text: string): ExtractedItem[] {
   // Prvi prolaz: za retke koji sadrže SAMO cijenu (nema naziva na istom
   // retku), rezerviraj naziv s jednog od (najviše) dva prethodna retka.
   const consumedAsName = new Set<number>();
+  // Podskup consumedAsName gdje je naziv pogođen BEZ pouzdanog CAPS signala
+  // (obrazac 3 ispod) — UI mora ovo istaknuti jer je stvarno dvosmisleno
+  // (vidi opis nameUncertain u ExtractedItem).
+  const uncertainName = new Set<number>();
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (!line.priceMatch) continue;
@@ -113,8 +129,12 @@ export function extractItemsFromText(text: string): ExtractedItem[] {
         // Obrazac 3: nema pouzdanog CAPS kandidata u blizini — koristi
         // najbliži prethodni redak kakav god bio (osim ako je i on sam
         // naslov dokumenta, u kojem slučaju je bolje ne pogoditi naziv nego
-        // pogriješiti).
+        // pogriješiti). Kad postoji redak dva iznad (prev2) koji bi TEORETSKI
+        // mogao biti stvarni naziv (npr. "Naziv / opis / cijena" bez CAPS-a
+        // na bilo kojem retku), nema pouzdanog načina znati je li prev1 ili
+        // prev2 točan — označi kao nesigurno da korisnik zna provjeriti.
         consumedAsName.add(i - 1);
+        if (prev2 && !prev2.priceMatch) uncertainName.add(i - 1);
       }
     }
   }
@@ -139,8 +159,10 @@ export function extractItemsFromText(text: string): ExtractedItem[] {
 
     let naziv = line.text.slice(0, line.priceMatch.index).replace(LEADER_DOTS_RE, "").trim();
     naziv = naziv.replace(/\s{2,}/g, " ");
+    let nameUncertain = false;
     if (!naziv && pendingNameIndex !== null) {
       naziv = lines[pendingNameIndex].text;
+      nameUncertain = uncertainName.has(pendingNameIndex);
     }
     pendingNameIndex = null;
     if (!naziv) continue;
@@ -155,6 +177,7 @@ export function extractItemsFromText(text: string): ExtractedItem[] {
       naziv: naziv.slice(0, 300),
       cijena,
       kategorija: currentCategory,
+      ...(nameUncertain ? { nameUncertain: true } : {}),
     });
   }
 

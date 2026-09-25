@@ -42,6 +42,7 @@ export function ImportReview({
 
   const selectedCount = rows.filter((r) => r.include).length;
   const allSelected = rows.length > 0 && selectedCount === rows.length;
+  const uncertainCount = rows.filter((r) => r.nameUncertain).length;
 
   function toggleSelectAll(checked: boolean) {
     setRows((prev) => prev.map((r) => ({ ...r, include: checked })));
@@ -149,6 +150,13 @@ export function ImportReview({
           nazive i cijene prije spremanja.
         </p>
       )}
+      {uncertainCount > 0 && (
+        <p className="text-alert text-sm">
+          ⚠ {uncertainCount} {uncertainCount === 1 ? "stavka ima" : "stavke/stavki imaju"} naziv
+          označen žutim obrubom ispod — naziv i opis su bili na odvojenim recima bez jasne razlike
+          (npr. velika/mala slova) pa je pogodak nesiguran. Provjerite ih posebno prije spremanja.
+        </p>
+      )}
       <div className="flex items-center gap-2 text-sm border-b border-navy/10 pb-2">
         <input
           type="checkbox"
@@ -198,7 +206,12 @@ export function ImportReview({
 
       <div className="max-h-96 overflow-y-auto flex flex-col gap-2">
         {rows.map((row, index) => (
-          <div key={index} className="flex items-center gap-2 border border-navy/10 rounded px-3 py-2">
+          <div
+            key={index}
+            className={`flex items-center gap-2 border rounded px-3 py-2 ${
+              row.nameUncertain ? "border-alert bg-alert/5" : "border-navy/10"
+            }`}
+          >
             <input
               type="checkbox"
               checked={row.include}
@@ -212,10 +225,17 @@ export function ImportReview({
               <option value="proizvod">Proizvod</option>
               <option value="usluga">Usluga</option>
             </select>
+            {row.nameUncertain && (
+              <span title="Naziv je nesiguran pogodak — provjerite ga" className="text-alert text-sm shrink-0">
+                ⚠
+              </span>
+            )}
             <input
               value={row.naziv}
               onChange={(e) => update(index, { naziv: e.target.value })}
-              className="flex-1 border border-navy/30 rounded px-2 py-1 bg-transparent text-sm"
+              className={`flex-1 border rounded px-2 py-1 bg-transparent text-sm ${
+                row.nameUncertain ? "border-alert" : "border-navy/30"
+              }`}
             />
             <input
               type="number"
