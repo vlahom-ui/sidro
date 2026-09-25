@@ -56,7 +56,7 @@ export default async function VenueDetailPage({
 
   const { data: cjenici } = await supabase
     .from("cjenici")
-    .select("id, naziv, podkategorija_id")
+    .select("id, naziv, slug, podkategorija_id")
     .eq("venue_id", venueId)
     .order("created_at", { ascending: false });
 
@@ -82,6 +82,7 @@ export default async function VenueDetailPage({
   const cjeniciWithCount = (cjenici ?? []).map((c) => ({
     id: c.id,
     naziv: c.naziv,
+    slug: c.slug,
     itemCount: itemCountByCjenik[c.id] ?? 0,
     kategorijaLabel: c.podkategorija_id ? kategorijaLabelByPodkategorijaId.get(c.podkategorija_id) ?? null : null,
   }));
@@ -213,7 +214,7 @@ export default async function VenueDetailPage({
           <>
             <section className="mb-10">
               <h2 className="font-bold mb-3">Cjenici</h2>
-              <CjeniciList venueId={venue.id} cjenici={cjeniciWithCount} />
+              <CjeniciList venueId={venue.id} cjenici={cjeniciWithCount} publicUrl={publicUrl} />
             </section>
 
             <section className="mb-10">

@@ -876,3 +876,70 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
     postojeća generirana datoteka nije regenerirana automatski (izvan
     dosega ove sesije — nema pristupa pravoj Vercel/aplikacijskoj rundi
     da se ruta pozove izravno, po dizajnu ove sesije).
+- **Javni pregled po pojedinom cjeniku** (`/c/{venue_slug}/{cjenik_slug}`)
+  — korisnik želi slati klijentima poveznicu na JEDAN cjenik ("Light
+  lunch") odvojeno od ostatka objekta, radi pregleda/odobrenja PRIJE
+  objave. Bitno, nepromijenjeno ograničenje: čisto ljudski-čitljiv
+  pregled, ne dira zakonski izvoz — generirani .csv/.xml i dalje UVIJEK
+  agregira sve cjenike objekta zajedno po tipu, točno kako i danas;
+  pojedini cjenik nema i neće imati vlastitu zakonsku datoteku.
+  - **Shema**: `cjenici.slug` (migracija `0017_cjenici_slug.sql`,
+    primijenjena preko Supabase MCP-a), unikatan PO OBJEKTU
+    (`unique index (venue_id, slug)`), ne globalno — isto načelo kao
+    `venues.slug`. Retroaktivno popunjen za oba postojeća cjenika u
+    produkciji ("Light lunch" → `light-lunch`, "Zuzori glavni menu" →
+    `zuzori-glavni-menu`) — vrijednosti izračunate izvan baze pokretanjem
+    STVARNE `slugify()` funkcije (`lib/slug.ts`) nad trenutnim podacima
+    (potvrđeno `npx tsx`), ne aproksimacijom u SQL-u, radi jamčene
+    vjernosti "ista slugify logika koja već postoji". Samo 2 retka
+    postojala u trenutku migracije, bez sudara.
+  - **Stvaranje cjenika** (`app/api/venues/[venue]/cjenici/route.ts`) —
+    isti slugify + collision-suffix mehanizam kao `POST /api/venues`
+    (bazni slug, na sudar dodaje se nasumičan 4-znakovni sufiks), ali
+    provjera jedinstvenosti scopeana na `venue_id` umjesto globalno.
+  - **Nova ruta** `app/c/[slug]/[cjenikSlug]/page.tsx` — NAMJERNO koristi
+    `createAdminClient()` (service-role), ne RLS-ograničen `createClient()`
+    kao glavna `/c/{slug}` stranica. Razlog: `cjenici` tablica nema (i
+    namjerno ne dobiva) opću javnu RLS `select` politiku — takva politika
+    bi otvorila SVE cjenike SVIH objekata bilo kome, dok admin-klijent u
+    ovoj JEDNOJ ruti zaobilazi RLS samo za upite eksplicitno scopeane na
+    točan `venue_id`+`cjenik_id` par iz URL-a (isti "capability URL"
+    sigurnosni model kao i sam venue slug — pristup ovisi o poznavanju
+    točne poveznice, ne o javnoj vidljivosti u bazi). Radi neovisno o
+    `venue.status` (namjerno, bez ikakvog "published" uvjeta u upitu — za
+    razliku od glavne stranice) jer je cijela svrha pregled PRIJE objave.
+    Bez "Preuzmi CSV/XML" gumba (nema zakonske datoteke na razini
+    pojedinog cjenika).
+  - **Dijeljenje koda s glavnom `/c/{slug}` stranicom** — umjesto
+    duplicirane render logike, `ItemSection`/`ItemTable`/`formatPrice` iz
+    `/c/[slug]/page.tsx` izdvojeni u novu `components/PublicPriceList.tsx`
+    (dijeljeno između obje javne stranice), glavna stranica refaktorirana
+    da je koristi bez promjene ponašanja (usput uklonjene dvije mrtve
+    varijable — `proizvodi`/`usluge` su ostale izračunate ali nekorištene
+    nakon izdvajanja filtriranja u zajedničku komponentu).
+  - **UI** (`components/items/CjeniciList.tsx`, `app/dashboard/[venue]/
+    page.tsx`) — svaki redak u "Cjenici" popisu dobiva "Pregled" poveznicu
+    (novi tab) uz postojeći "Obriši", analogno "Javna stranica" linku na
+    razini objekta.
+  - **Test — DB-level preko Supabase MCP-a, uključujući stvaran uzorak iz
+    briefa**: upit koji točno replicira logiku nove rute pokrenut nad
+    STVARNIM "Light lunch" cjenikom na "zuzori" — vratio točno 53 stavke
+    (potvrđeno da zbroj s "Zuzori glavni menu" (146) daje ukupnih 199,
+    bez preklapanja). Sintetički test: cjenik na NACRT (draft) objektu —
+    upit vraća podatke bez ikakvog filtriranja po statusu, potvrđujući da
+    logika ispravno NE ovisi o objavi. Sudar slugova: dva cjenika s
+    identičnim nazivom "Light lunch" u istom objektu uspješno dobivaju
+    različite slugove (`light-lunch` / `light-lunch-x9z2`); ručni pokušaj
+    umetanja PRAVOG duplikata (isti `venue_id`+`slug`) ispravno odbijen
+    od strane `unique index` constrainta (`23505 duplicate key`),
+    potvrđujući da baza štiti jedinstvenost i nezavisno o aplikacijskoj
+    provjeri. Svi sintetički test podaci obrisani nakon.
+  - `npm run typecheck` i `npm run build` prolaze čisto — build log
+    potvrđuje da je `/c/[slug]/[cjenikSlug]` registrirana kao nova ruta.
+  - **Regresija potvrđena upitom**: glavna `/c/{slug}` stranica i dalje
+    koristi identičnu logiku (RLS-ograničen klijent, `published` gate),
+    samo joj je render dio sad uvezen iz dijeljene komponente umjesto
+    lokalno definiran — ista markup struktura, ista klasa imena.
+  - **Nije testirano uživo**: stvaran klik na "Pregled" link u
+    pregledniku, stvaran prikaz `/c/zuzori/light-lunch` (i na nacrt
+    objektu), kopiranje poveznice i slanje — čeka korisnikovu provjeru.

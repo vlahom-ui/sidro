@@ -159,6 +159,7 @@ export interface Database {
           id: string;
           venue_id: string;
           naziv: string;
+          slug: string;
           podkategorija_id: string | null;
           created_at: string;
         };
@@ -166,6 +167,7 @@ export interface Database {
           id?: string;
           venue_id: string;
           naziv: string;
+          slug: string;
           podkategorija_id?: string | null;
           created_at?: string;
         };

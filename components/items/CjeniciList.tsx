@@ -9,11 +9,20 @@ import { useConfirm } from "@/components/useConfirm";
 interface CjenikWithCount {
   id: string;
   naziv: string;
+  slug: string;
   itemCount: number;
   kategorijaLabel: string | null;
 }
 
-export function CjeniciList({ venueId, cjenici }: { venueId: string; cjenici: CjenikWithCount[] }) {
+export function CjeniciList({
+  venueId,
+  cjenici,
+  publicUrl,
+}: {
+  venueId: string;
+  cjenici: CjenikWithCount[];
+  publicUrl: string;
+}) {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,13 +66,23 @@ export function CjeniciList({ venueId, cjenici }: { venueId: string; cjenici: Cj
             </div>
             {c.kategorijaLabel && <div className="text-xs opacity-60">{c.kategorijaLabel}</div>}
           </Link>
-          <button
-            onClick={() => handleDelete(c)}
-            disabled={deletingId === c.id}
-            className="text-alert underline text-sm disabled:opacity-50"
-          >
-            {deletingId === c.id ? "Brisanje..." : "Obriši"}
-          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            <a
+              href={`${publicUrl}/${c.slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-slate underline text-sm"
+            >
+              Pregled
+            </a>
+            <button
+              onClick={() => handleDelete(c)}
+              disabled={deletingId === c.id}
+              className="text-alert underline text-sm disabled:opacity-50"
+            >
+              {deletingId === c.id ? "Brisanje..." : "Obriši"}
+            </button>
+          </div>
         </div>
       ))}
       {error && <p className="text-alert text-sm">{error}</p>}

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { assertVenueOwner } from "@/lib/ownership";
 import { logAudit } from "@/lib/audit";
 import { withErrorHandling } from "@/lib/apiRoute";
+import { slugify } from "@/lib/slug";
 
 const bodySchema = z.object({
   naziv: z.string().min(1).max(200),
@@ -41,9 +42,25 @@ export const POST = withErrorHandling(async (
     podkategorijaId = podkategorija.id;
   }
 
+  // Isti slugify + collision-suffix mehanizam kao venues.slug (POST /api/
+  // venues), ali unikatnost je po objektu (venue_id), ne globalno — /c/
+  // {venue_slug}/{cjenik_slug} je već jednoznačan kroz oba dijela URL-a.
+  const baseSlug = slugify(parsed.data.naziv) || "cjenik";
+  let slug = baseSlug;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const { data: existing } = await supabase
+      .from("cjenici")
+      .select("id")
+      .eq("venue_id", venueId)
+      .eq("slug", slug)
+      .maybeSingle();
+    if (!existing) break;
+    slug = `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`;
+  }
+
   const { data: cjenik, error } = await supabase
     .from("cjenici")
-    .insert({ venue_id: venueId, naziv: parsed.data.naziv, podkategorija_id: podkategorijaId })
+    .insert({ venue_id: venueId, naziv: parsed.data.naziv, slug, podkategorija_id: podkategorijaId })
     .select()
     .single();
 
