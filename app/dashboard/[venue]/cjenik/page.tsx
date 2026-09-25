@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { DashboardHeader } from "@/components/DashboardHeader";
+import { Breadcrumb } from "@/components/Breadcrumb";
 import { CjenikWorkspace } from "@/components/items/CjenikWorkspace";
 
 export default async function CjenikPage({
@@ -51,6 +52,13 @@ export default async function CjenikPage({
     <main className="min-h-screen">
       <DashboardHeader email={user.email ?? ""} />
       <div className="max-w-3xl mx-auto px-4 py-10">
+        <Breadcrumb
+          items={[
+            { label: "Objekti", href: "/dashboard" },
+            { label: venue.naziv, href: `/dashboard/${venue.id}` },
+            { label: "Cjenik" },
+          ]}
+        />
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold">Cjenik — {venue.naziv}</h1>
           <Link href={`/dashboard/${venue.id}`} className="text-slate underline text-sm">

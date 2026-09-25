@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DashboardHeader } from "@/components/DashboardHeader";
+import { Breadcrumb } from "@/components/Breadcrumb";
 import { NewVenueForm } from "@/components/NewVenueForm";
 
 export default async function DashboardPage() {
@@ -21,6 +22,7 @@ export default async function DashboardPage() {
     <main className="min-h-screen">
       <DashboardHeader email={user.email ?? ""} />
       <div className="max-w-4xl mx-auto px-4 py-10">
+        <Breadcrumb items={[{ label: "Objekti" }]} />
         <h1 className="text-xl font-bold mb-6">Vaši objekti</h1>
 
         {venues && venues.length > 0 && (

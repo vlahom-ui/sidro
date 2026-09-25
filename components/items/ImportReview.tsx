@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ExtractedItem } from "@/lib/parsers/heuristics";
 import { apiFetch } from "@/lib/apiFetch";
+import { useConfirm } from "@/components/useConfirm";
 
 interface ReviewRow extends ExtractedItem {
   include: boolean;
@@ -35,6 +36,7 @@ export function ImportReview({
   const [duplicateNames, setDuplicateNames] = useState<string[] | null>(null);
   const [bulkTip, setBulkTip] = useState<ReviewRow["tip"]>("proizvod");
   const [bulkCijena, setBulkCijena] = useState("");
+  const { confirm, ConfirmDialog } = useConfirm();
 
   function update(index: number, patch: Partial<ReviewRow>) {
     setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
@@ -119,14 +121,12 @@ export function ImportReview({
     save("add", true);
   }
 
-  function handleReplace() {
-    if (
-      !confirm(
-        `Ovo će obrisati svih ${existingItemCount} postojećih stavki u ovom cjeniku i zamijeniti ih novo uvezenim stavkama. Ova radnja se ne može poništiti. Nastaviti?`
-      )
-    ) {
-      return;
-    }
+  async function handleReplace() {
+    const confirmed = await confirm(
+      `Ovo će obrisati svih ${existingItemCount} postojećih stavki u ovom cjeniku i zamijeniti ih novo uvezenim stavkama. Ova radnja se ne može poništiti. Nastaviti?`,
+      { confirmLabel: "Zamijeni" }
+    );
+    if (!confirmed) return;
     save("replace", true);
   }
 
@@ -300,6 +300,7 @@ export function ImportReview({
           Odustani
         </button>
       </div>
+      {ConfirmDialog}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { apiFetch } from "@/lib/apiFetch";
+import { useConfirm } from "@/components/useConfirm";
 
 export function DeleteAccountForm() {
   const router = useRouter();
@@ -11,13 +12,15 @@ export function DeleteAccountForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    const confirmed = confirm(
-      "Ovo će trajno obrisati vaš račun, sve vaše objekte, cjenike i stavke. Radnja se NE MOŽE poništiti. Nastaviti?"
+    const confirmed = await confirm(
+      "Ovo će trajno obrisati vaš račun, sve vaše objekte, cjenike i stavke. Radnja se NE MOŽE poništiti. Nastaviti?",
+      { confirmLabel: "Nastavi" }
     );
     if (!confirmed) return;
 
@@ -92,6 +95,7 @@ export function DeleteAccountForm() {
           Odustani
         </button>
       </div>
+      {ConfirmDialog}
     </form>
   );
 }

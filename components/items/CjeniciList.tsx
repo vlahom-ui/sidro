@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiFetch } from "@/lib/apiFetch";
+import { useConfirm } from "@/components/useConfirm";
 
 interface CjenikWithCount {
   id: string;
@@ -16,11 +17,13 @@ export function CjeniciList({ venueId, cjenici }: { venueId: string; cjenici: Cj
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   async function handleDelete(cjenik: CjenikWithCount) {
     if (cjenik.itemCount > 0) {
-      const confirmed = confirm(
-        `Obrisati "${cjenik.naziv}" i svih ${cjenik.itemCount} stavki unutra? Ova radnja se ne može poništiti.`
+      const confirmed = await confirm(
+        `Obrisati "${cjenik.naziv}" i svih ${cjenik.itemCount} stavki unutra? Ova radnja se ne može poništiti.`,
+        { confirmLabel: "Obriši cjenik" }
       );
       if (!confirmed) return;
     }
@@ -64,6 +67,7 @@ export function CjeniciList({ venueId, cjenici }: { venueId: string; cjenici: Cj
         </div>
       ))}
       {error && <p className="text-alert text-sm">{error}</p>}
+      {ConfirmDialog}
     </div>
   );
 }

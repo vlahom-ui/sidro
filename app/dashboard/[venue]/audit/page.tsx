@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DashboardHeader } from "@/components/DashboardHeader";
+import { Breadcrumb } from "@/components/Breadcrumb";
 
 const ACTION_LABELS: Record<string, string> = {
   venue_create: "Objekt stvoren",
@@ -41,6 +42,13 @@ export default async function VenueAuditPage({
     <main className="min-h-screen">
       <DashboardHeader email={user.email ?? ""} />
       <div className="max-w-4xl mx-auto px-4 py-10">
+        <Breadcrumb
+          items={[
+            { label: "Objekti", href: "/dashboard" },
+            { label: venue.naziv, href: `/dashboard/${venue.id}` },
+            { label: "Log aktivnosti" },
+          ]}
+        />
         <h1 className="text-xl font-bold mb-6">Log aktivnosti — {venue.naziv}</h1>
 
         {entries && entries.length > 0 ? (

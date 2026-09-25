@@ -511,3 +511,77 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
     testa, čeka korisnikovu live provjeru kao i dosad): stvaran klik na
     gumbe u pregledniku, UX poruka o krivoj lozinci uživo, ponašanje kad
     Admin API poziv (mrežni poziv prema GoTrue) padne usred zahtjeva.
+- **UX poboljšanja — objedinjeni brief (5 stavki)**:
+  1. **Dinamična labela glavnog CTA gumba** (`app/dashboard/[venue]/
+     page.tsx`) — "Uredi cjenik (N stavki)" zamijenjen kontekstualnom
+     labelom: "Kreiraj prvi cjenik" (0 cjenika), "Dodaj stavke u cjenik"
+     (≥1 cjenik, 0 stavki), "Uredi cjenik (N stavki)" (≥1 stavka,
+     nepromijenjeno).
+  2. **Redizajn praznog stanja stranice objekta** (`app/dashboard/
+     [venue]/page.tsx`, `components/VenueActions.tsx`) — "Generiraj/
+     Ažuriraj cjenik" i QR gumbi/pregled skriveni dok `itemCount === 0`
+     (generate) odn. `cjenikCount === 0 && itemCount === 0` (QR — vidljiv
+     čim postoji BILO cjenik BILO stavka, ne samo cjenik, radi
+     ispravnosti u rijetkom slučaju negrupiranih stavki bez cjenika,
+     iako taj slučaj nije dohvatljiv kroz trenutni UI flow jer
+     `CjenikWorkspace` ne prikazuje "+ Dodaj stavku" prije nego postoji
+     barem jedan cjenik — obrađeno svejedno jer je API tehnički dopušta).
+     Iznimka od doslovnog briefa, namjerno: "Objavi cjenik" ostaje
+     vidljiv i kad `itemCount === 0` AKO je objekt već objavljen (`status
+     === "published"`) — bez ovoga bi korisnik koji isprazni već
+     objavljeni cjenik izgubio jedini UI put da povuče objavu. Tri prazne
+     sekcije (Cjenici/Generirane datoteke/Izvori uvoza) spojene u jednu
+     kratku poruku samo kad je objekt POTPUNO prazan (`cjenikCount === 0
+     && itemCount === 0`); čim postoji cjenik ili stavka, sve tri sekcije
+     prikazane odvojeno kao i prije (bez izmjene njihove interne "prazno"
+     logike).
+  3. **Javna stranica — grupiranje preuzimanja + upozorenje o
+     zastarjelosti**:
+     - `app/c/[slug]/page.tsx` — četiri ravnopravna gumba zamijenjena
+       dvama redovima po zakonskoj kategoriji ("Cjenik proizvoda" /
+       "Cjenik usluga", svaki s CSV/XML gumbima), red se prikazuje samo
+       ako ta kategorija ima generiranu datoteku. Datoteke se i dalje NE
+       spajaju (`generate` ruta ionako uvijek generira zasebne CSV/XML po
+       tipu) — samo prezentacija grupirana.
+     - `app/dashboard/[venue]/page.tsx` — upozorenje o zastarjelosti PO
+       zakonskoj kategoriji: uspoređuje `max(items.updated_at)` s
+       `max(generated_files.generated_at)` (samo `is_current`) za svaki
+       tip zasebno; ako je stavka te kategorije izmijenjena NAKON zadnjeg
+       generiranja te kategorije, prikazuje se vidljivo upozorenje iznad
+       akcija ("Cjenik {proizvoda/usluga} nije ažuriran nakon zadnje
+       izmjene stavki..."). Logika provjerena DB-level testom (Supabase
+       MCP, sintetički venue s dvije kategorije — jednom svježom, jednom
+       namjerno zastarjelom preko `UPDATE items ... SET cijena=...` nakon
+       `generated_at` — SQL replika točne JS agregacije potvrdila očekivan
+       rezultat za oba slučaja, podaci obrisani nakon testa).
+  4. **Breadcrumb navigacija** (`components/Breadcrumb.tsx`, novi) —
+     dodan na sve četiri `/dashboard/...` stranice (`dashboard/page.tsx`,
+     `dashboard/[venue]/page.tsx`, `dashboard/[venue]/cjenik/page.tsx`,
+     `dashboard/[venue]/audit/page.tsx`), npr. "Objekti / Villa Dubrovnik
+     / Cjenik". Svaka razina osim zadnje je klikabilan link. Postojeći
+     ad-hoc "← Natrag na objekt" link na cjenik stranici namjerno
+     zadržan kao dodatna prečica (brief eksplicitno dopušta). Logo
+     "sidro" u `DashboardHeader.tsx` je pri pregledu koda već bio Link na
+     `/dashboard` (ranija implementacija) — provjereno, nije trebalo
+     izmjenu.
+  5. **In-app modal umjesto `window.confirm()`** (`components/
+     useConfirm.tsx`, novi hook) — `useConfirm()` vraća `confirm(message,
+     {confirmLabel?, cancelLabel?})` koji vraća `Promise<boolean>` (isti
+     "await odluku" oblik kao `window.confirm()`, pa je zamjena na svakom
+     pozivnom mjestu jednolinijska) i `ConfirmDialog` JSX element
+     (fiksno pozicioniran overlay, Escape zatvara kao otkazivanje, fokus
+     na "Odustani" gumb). Tekst poruka nepromijenjen, zamijenjena samo
+     posuda. Svih 5 mjesta gdje je postojao `confirm()`:
+     `VenueActions.tsx` (brisanje objekta), `CjeniciList.tsx` (brisanje
+     cjenika), `ItemsManager.tsx` (brisanje stavke), `DeleteAccountForm.
+     tsx` (upozorenje o nepovratnosti prije brisanja računa — koraк s
+     lozinkom OSTAJE nepromijenjen, modal je samo dodatni vizualni sloj
+     oko postojeće potvrde), `ImportReview.tsx` (zamjena postojećih
+     stavki pri uvozu).
+  `npm run typecheck` i `npm run build` prolaze čisto. **Test — DB-level
+  za upozorenje o zastarjelosti (gore), za sve ostalo NIJE testirano
+  uživo** (izvan dosega — sandbox nema odlazni pristup do
+  sidroapp.com/Supabase pa live browser test nije moguć odavde): prazno
+  stanje, dinamična CTA labela, breadcrumb navigacija, in-app modal
+  ponašanje (uključujući da modal ne blokira ostatak stranice/React
+  state kao native `confirm()`) čekaju korisnikovu live provjeru.

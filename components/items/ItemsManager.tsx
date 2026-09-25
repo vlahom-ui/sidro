@@ -6,6 +6,7 @@ import type { Database, ItemTip } from "@/lib/database.types";
 import { ItemForm, type ItemFormValues } from "./ItemForm";
 import { GroupedItemForm } from "./GroupedItemForm";
 import { apiFetch } from "@/lib/apiFetch";
+import { useConfirm } from "@/components/useConfirm";
 
 type Item = Database["public"]["Tables"]["items"]["Row"];
 type ItemGroup = Database["public"]["Tables"]["item_groups"]["Row"];
@@ -69,6 +70,7 @@ export function ItemsManager({
   const [bulkMessage, setBulkMessage] = useState<string | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   async function handleCreate(values: ItemFormValues) {
     const { ok, data, error } = await apiFetch<{ item: Item }>(`/api/venues/${venueId}/items`, {
@@ -95,7 +97,7 @@ export function ItemsManager({
   }
 
   async function handleDelete(itemId: string) {
-    if (!confirm("Obrisati ovu stavku?")) return;
+    if (!(await confirm("Obrisati ovu stavku?", { confirmLabel: "Obriši stavku" }))) return;
     setBulkMessage(null);
     setBulkError(null);
     setDeletingId(itemId);
@@ -304,6 +306,7 @@ export function ItemsManager({
           {ungroupedItems.map(renderItemRow)}
         </div>
       )}
+      {ConfirmDialog}
     </div>
   );
 }

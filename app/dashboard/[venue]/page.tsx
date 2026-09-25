@@ -5,6 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { VenueActions } from "@/components/VenueActions";
 import { CjeniciList } from "@/components/items/CjeniciList";
+import { Breadcrumb } from "@/components/Breadcrumb";
+
+const TIP_LABEL_GENITIVE: Record<string, string> = { proizvod: "proizvoda", usluga: "usluga" };
 
 const SOURCE_LABELS: Record<string, string> = {
   pdf: "PDF",
@@ -81,12 +84,46 @@ export default async function VenueDetailPage({
     kategorijaLabel: c.podkategorija_id ? kategorijaLabelByPodkategorijaId.get(c.podkategorija_id) ?? null : null,
   }));
 
+  const cjenikCount = cjeniciWithCount.length;
+  const actualItemCount = itemCount ?? 0;
+  const primaryCtaLabel =
+    cjenikCount === 0
+      ? "Kreiraj prvi cjenik"
+      : actualItemCount === 0
+        ? "Dodaj stavke u cjenik"
+        : `Uredi cjenik (${actualItemCount} stavki)`;
+
+  // Upozorenje o zastarjeloj generiranoj datoteci: po zakonskoj kategoriji
+  // (proizvod/usluga), usporedi zadnju izmjenu bilo koje stavke te
+  // kategorije s vremenom generiranja zadnje trenutne datoteke te
+  // kategorije — ako je stavka izmijenjena OTAD, objavljena datoteka više
+  // ne odražava trenutne cijene.
+  const { data: itemsForStaleness } = await supabase
+    .from("items")
+    .select("tip, updated_at")
+    .eq("venue_id", venueId);
+
+  const maxUpdatedAtByTip = new Map<string, number>();
+  for (const it of itemsForStaleness ?? []) {
+    const t = new Date(it.updated_at).getTime();
+    if (t > (maxUpdatedAtByTip.get(it.tip) ?? 0)) maxUpdatedAtByTip.set(it.tip, t);
+  }
+  const generatedAtByTip = new Map<string, number>();
+  for (const f of generatedFiles ?? []) {
+    const t = new Date(f.generated_at).getTime();
+    if (t > (generatedAtByTip.get(f.tip) ?? 0)) generatedAtByTip.set(f.tip, t);
+  }
+  const staleTips = Array.from(generatedAtByTip.entries())
+    .filter(([tip, genAt]) => (maxUpdatedAtByTip.get(tip) ?? 0) > genAt)
+    .map(([tip]) => tip);
+
   const publicUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/c/${venue.slug}`;
 
   return (
     <main className="min-h-screen">
       <DashboardHeader email={user.email ?? ""} />
       <div className="max-w-4xl mx-auto px-4 py-10">
+        <Breadcrumb items={[{ label: "Objekti", href: "/dashboard" }, { label: venue.naziv }]} />
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-xl font-bold">{venue.naziv}</h1>
           <span
@@ -107,102 +144,126 @@ export default async function VenueDetailPage({
 
         <div className="flex gap-3 mb-8">
           <Link href={`/dashboard/${venue.id}/cjenik`} className="btn-primary rounded px-4 py-2 font-bold">
-            Uredi cjenik ({itemCount ?? 0} stavki)
+            {primaryCtaLabel}
           </Link>
           <Link href={`/dashboard/${venue.id}/audit`} className="rounded px-4 py-2 border border-navy/30 font-bold">
             Log aktivnosti
           </Link>
         </div>
 
-        <section className="mb-10 flex flex-col sm:flex-row gap-6 items-start">
-          <div className="border border-navy/20 rounded p-3 bg-white/40">
-            <Image
-              src={`/api/venues/${venue.id}/qr?format=png`}
-              alt={`QR kod za ${publicUrl}`}
-              width={160}
-              height={160}
-              unoptimized
-            />
+        {staleTips.length > 0 && (
+          <div className="mb-6 border border-alert/40 rounded px-4 py-3 flex flex-col gap-1">
+            {staleTips.map((tip) => (
+              <p key={tip} className="text-alert text-sm font-bold">
+                ⚠ Cjenik {TIP_LABEL_GENITIVE[tip] ?? tip} nije ažuriran nakon zadnje izmjene stavki —
+                ponovno generirajte prije objave/distribucije.
+              </p>
+            ))}
           </div>
+        )}
+
+        <section className="mb-10 flex flex-col sm:flex-row gap-6 items-start">
+          {(cjenikCount > 0 || actualItemCount > 0) && (
+            <div className="border border-navy/20 rounded p-3 bg-white/40">
+              <Image
+                src={`/api/venues/${venue.id}/qr?format=png`}
+                alt={`QR kod za ${publicUrl}`}
+                width={160}
+                height={160}
+                unoptimized
+              />
+            </div>
+          )}
           <VenueActions
             venueId={venue.id}
             status={venue.status}
             venueNaziv={venue.naziv}
-            cjenikCount={cjeniciWithCount.length}
-            itemCount={itemCount ?? 0}
+            cjenikCount={cjenikCount}
+            itemCount={actualItemCount}
           />
         </section>
 
-        <section className="mb-10">
-          <h2 className="font-bold mb-3">Cjenici</h2>
-          <CjeniciList venueId={venue.id} cjenici={cjeniciWithCount} />
-        </section>
+        {cjenikCount === 0 && actualItemCount === 0 ? (
+          <section className="border border-navy/10 rounded px-4 py-8 text-center">
+            <p className="text-sm opacity-70">
+              Objekt je potpuno prazan — još nema kreiran nijedan cjenik, generiranu datoteku ni
+              evidentiran uvoz. Kliknite &quot;{primaryCtaLabel}&quot; da počnete.
+            </p>
+          </section>
+        ) : (
+          <>
+            <section className="mb-10">
+              <h2 className="font-bold mb-3">Cjenici</h2>
+              <CjeniciList venueId={venue.id} cjenici={cjeniciWithCount} />
+            </section>
 
-        <section className="mb-10">
-          <h2 className="font-bold mb-3">Generirane datoteke</h2>
-          {generatedFiles && generatedFiles.length > 0 ? (
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="text-left border-b border-navy/20">
-                  <th className="py-2 pr-4">Format</th>
-                  <th className="py-2 pr-4">Tip</th>
-                  <th className="py-2 pr-4">Verzija</th>
-                  <th className="py-2 pr-4">Generirano</th>
-                  <th className="py-2 pr-4">Vrijedi do</th>
-                  <th className="py-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {generatedFiles.map((f) => (
-                  <tr key={f.id} className="border-b border-navy/10">
-                    <td className="py-2 pr-4 uppercase">{f.format}</td>
-                    <td className="py-2 pr-4">{f.tip}</td>
-                    <td className="py-2 pr-4">v{f.version_number}</td>
-                    <td className="py-2 pr-4">{new Date(f.generated_at).toLocaleString("hr-HR")}</td>
-                    <td className="py-2 pr-4">{new Date(f.expires_at).toLocaleDateString("hr-HR")}</td>
-                    <td className="py-2">
-                      <a href={f.file_url} className="text-slate underline">
-                        Preuzmi
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p className="text-sm opacity-70">Cjenik još nije generiran.</p>
-          )}
-        </section>
+            <section className="mb-10">
+              <h2 className="font-bold mb-3">Generirane datoteke</h2>
+              {generatedFiles && generatedFiles.length > 0 ? (
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="text-left border-b border-navy/20">
+                      <th className="py-2 pr-4">Format</th>
+                      <th className="py-2 pr-4">Tip</th>
+                      <th className="py-2 pr-4">Verzija</th>
+                      <th className="py-2 pr-4">Generirano</th>
+                      <th className="py-2 pr-4">Vrijedi do</th>
+                      <th className="py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {generatedFiles.map((f) => (
+                      <tr key={f.id} className="border-b border-navy/10">
+                        <td className="py-2 pr-4 uppercase">{f.format}</td>
+                        <td className="py-2 pr-4">{f.tip}</td>
+                        <td className="py-2 pr-4">v{f.version_number}</td>
+                        <td className="py-2 pr-4">{new Date(f.generated_at).toLocaleString("hr-HR")}</td>
+                        <td className="py-2 pr-4">{new Date(f.expires_at).toLocaleDateString("hr-HR")}</td>
+                        <td className="py-2">
+                          <a href={f.file_url} className="text-slate underline">
+                            Preuzmi
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="text-sm opacity-70">Cjenik još nije generiran.</p>
+              )}
+            </section>
 
-        <section>
-          <h2 className="font-bold mb-3">Izvori uvoza</h2>
-          {importSources && importSources.length > 0 ? (
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="text-left border-b border-navy/20">
-                  <th className="py-2 pr-4">Izvor</th>
-                  <th className="py-2 pr-4">Status</th>
-                  <th className="py-2 pr-4">Metoda</th>
-                  <th className="py-2 pr-4">Broj stavki</th>
-                  <th className="py-2">Datum</th>
-                </tr>
-              </thead>
-              <tbody>
-                {importSources.map((s) => (
-                  <tr key={s.id} className="border-b border-navy/10">
-                    <td className="py-2 pr-4">{SOURCE_LABELS[s.source_type] ?? s.source_type}</td>
-                    <td className="py-2 pr-4">{s.status}</td>
-                    <td className="py-2 pr-4">{s.method}</td>
-                    <td className="py-2 pr-4">{s.item_count}</td>
-                    <td className="py-2">{new Date(s.created_at).toLocaleString("hr-HR")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p className="text-sm opacity-70">Još nema evidentiranih uvoza.</p>
-          )}
-        </section>
+            <section>
+              <h2 className="font-bold mb-3">Izvori uvoza</h2>
+              {importSources && importSources.length > 0 ? (
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="text-left border-b border-navy/20">
+                      <th className="py-2 pr-4">Izvor</th>
+                      <th className="py-2 pr-4">Status</th>
+                      <th className="py-2 pr-4">Metoda</th>
+                      <th className="py-2 pr-4">Broj stavki</th>
+                      <th className="py-2">Datum</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importSources.map((s) => (
+                      <tr key={s.id} className="border-b border-navy/10">
+                        <td className="py-2 pr-4">{SOURCE_LABELS[s.source_type] ?? s.source_type}</td>
+                        <td className="py-2 pr-4">{s.status}</td>
+                        <td className="py-2 pr-4">{s.method}</td>
+                        <td className="py-2 pr-4">{s.item_count}</td>
+                        <td className="py-2">{new Date(s.created_at).toLocaleString("hr-HR")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="text-sm opacity-70">Još nema evidentiranih uvoza.</p>
+              )}
+            </section>
+          </>
+        )}
       </div>
     </main>
   );
