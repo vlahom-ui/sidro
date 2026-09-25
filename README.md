@@ -675,3 +675,74 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   nakon objave bez re-generiranja → ponovno rašireno) — logika je
   ručno simulirana kroz kod i potvrđena DB-level testom za korak 4, ali
   stvaran klik u pregledniku čeka korisnikovu provjeru.
+- **Prijavljeni bug "brisanje cjenika ne briše stavke" — istraženo,
+  hipoteza NIJE potvrđena, pravi problem nađen i popravljen negdje
+  drugdje.** Korisnik je prijavio da FK na `items.cjenik_id` koristi
+  `set null` umjesto `cascade`, na temelju checklist prikaza na objektu
+  "test" nakon brisanja "Glavni cjenik". Prije bilo kakve izmjene sheme,
+  provjereno izravno na produkcijskoj bazi (`pg_constraint` upit, ne
+  čitanje migracijske datoteke — moguć je razmak između onoga što je
+  zapisano i onoga što je STVARNO primijenjeno):
+  ```
+  items_cjenik_id_fkey: FOREIGN KEY (cjenik_id) REFERENCES cjenici(id) ON DELETE CASCADE
+  ```
+  FK je već `CASCADE`, potvrđeno i regresijskim testom ispod. Predložena
+  migracija iz zadatka (`drop constraint` + `add constraint ... cascade`)
+  NIJE primijenjena — bila bi no-op na već ispravnom constraintu, bez
+  ikakve koristi, samo nepotreban rizik na produkcijskoj tablici.
+
+  **Stvarni uzrok 70 "osirotjelih" stavki na objektu "test"**, rekonstruiran
+  iz `audit_log` te `items.created_at`/`updated_at` te git povijesti
+  migracija: sve 70 stavki dijele TOČNO isti `created_at` = `2026-09-24
+  18:25:31`. Cjenici funkcionalnost (migracija `0011_cjenici.sql`,
+  `items.cjenik_id` stupac) uvedena je commitom `01a52ad`, deployan tek u
+  **19:00:30** istog dana — više od 30 minuta KASNIJE. Te stavke su,
+  drugim riječima, nastale prije nego što je `cjenik_id` stupac uopće
+  postojao; migracija ih je retroaktivno dobila kao `null` (točno
+  namjeravano ponašanje iz vlastitog komentara migracije: "Postojeće
+  stavke (cjenik_id null) ostaju netaknute i dalje uključene u izvoz").
+  Sam `cjenik_delete` audit zapis za "Glavni cjenik" to potvrđuje vlastitim
+  tekstom: `"Glavni cjenik" — 0 stavki obrisano` — taj cjenik STVARNO nije
+  imao nijednu vezanu stavku (kreiran 19:31, sat vremena nakon što su
+  stavke već postojale bez ikakvog cjenika), pa brisanje nije ni trebalo
+  ništa cascade-obrisati. Provjereno da isti obrazac (orphan stavke s
+  `created_at` prije 19:00:30 tog dana) vrijedi za sve OSTALE pogođene
+  objekte u bazi (`Sesame` — 10 stavki iz 9/23, prije nego je cjenici
+  koncept uopće postojao; `test pjerin` — 70 stavki u 19:04:40, unutar
+  prozora dok je deploy tek postizao propagaciju) — nijedan trag ne postoji
+  koji bi povezao IJEDNU od ovih stavki sa stvarnim cjenik-delete
+  operacijom. **Migracija podataka (zadatak #2) stoga NIJE pokrenuta —
+  ove stavke su legitimne, po istom kriteriju koji je korisnik sam
+  postavio ("nastala prije uvođenja cjenici koncepta → ostaviti").**
+
+  **Pravi, stvaran propust — otkriven kroz istu istragu**: iako FK
+  ispravno cascade-briše stavke VEZANE uz obrisan cjenik, stavke BEZ
+  cjenika (bilo naslijeđene kao gore, bilo iz bilo kojeg drugog razloga)
+  postaju potpuno nevidljive i needitabilne čim broj cjenika padne na 0 —
+  `CjenikWorkspace.tsx` je prikazivao ISKLJUČIVO formu "kreiraj prvi
+  cjenik" kad god `cjenici.length === 0`, bez obzira postoje li već
+  stavke bez cjenika. Te stavke i dalje ulaze u `generate` rutu (agregira
+  po `venue_id`, ne po `cjenik_id`) i u već objavljeni javni cjenik —
+  korisnik nije imao NAČINA ih vidjeti, urediti ili obrisati kroz UI. Ovo
+  je stvaran rizik za točnost zakonski objavljenog sadržaja, samo
+  drugačijeg mehanizma od prijavljenog. Popravljeno: `CjenikWorkspace.tsx`
+  sad prikazuje samo formu za kreiranje prvog cjenika kad NEMA ni cjenika
+  ni stavki (`cjenici.length === 0 && ungroupedCount === 0`); čim postoji
+  ijedna stavka bez cjenika, ispod forme se prikazuje puni `ImportPanel`/
+  `ItemsManager` s `cjenikId=null`, isti obrazac koji se već koristio za
+  postojeći odabir "Bez cjenika — starije stavke" u dropdownu. Naslov
+  sekcije mijenja se u "Stavke bez cjenika" kad nema odabranog cjenika,
+  radi jasnoće.
+  - **Regresijski test (zadatak #3) — DB-level**, Supabase MCP, sintetički
+    venue: kreiran cjenik s 2 stavke (proizvod + usluga) i generiranim
+    datotekama, izbrisan `DELETE FROM cjenici WHERE id=...` (točna akcija
+    iz `app/api/cjenici/[cjenik]/route.ts`) — potvrđeno da NAKON brisanja
+    više NEMA nijedne stavke tog `cjenik_id`-a (obrisane, ne `null`), da
+    ukupan broj stavki objekta pada na 0 (znači: iduće `generate`
+    agregiranje po `venue_id` neće ih uključiti), i da nema novih
+    osirotjelih redaka. Test podaci obrisani nakon.
+  - `npm run typecheck` i `npm run build` prolaze čisto.
+  - **Nije testirano uživo**: stvaran prikaz "Stavke bez cjenika" panela
+    na objektu "test" u pregledniku (70 postojećih stavki sad bi trebale
+    postati vidljive/uredive) čeka korisnikovu provjeru. Podaci na tom
+    objektu namjerno NISU dirani — samo UI koji ih prikazuje.

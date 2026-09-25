@@ -99,7 +99,14 @@ export function CjenikWorkspace({
   const existingItemCount = filteredItems.length;
   const selectedCjenik = cjenici.find((c) => c.id === selectedCjenikId);
 
-  if (cjenici.length === 0) {
+  // Prikaži SAMO formu "kreiraj prvi cjenik" jedino kad objekt stvarno nema
+  // ništa — ni cjenik ni ijednu stavku. Ako postoje stavke bez cjenika
+  // (npr. naslijeđene iz doba prije uvođenja cjenici koncepta, ili nastale
+  // brisanjem cjenika koji nikad nije imao vlastite stavke), one moraju
+  // ostati vidljive i uredive ispod forme — inače su nevidljive u UI-ju, a
+  // i dalje ulaze u zakonski izvoz (generate ruta agregira po venue_id, ne
+  // po cjenik_id), što korisnik ne bi imao načina primijetiti ni ispraviti.
+  if (cjenici.length === 0 && ungroupedCount === 0) {
     return (
       <CjenikSelector
         venueId={venueId}
@@ -139,7 +146,7 @@ export function CjenikWorkspace({
       </section>
 
       <section>
-        <h2 className="font-bold mb-3">Stavke cjenika</h2>
+        <h2 className="font-bold mb-3">{selectedCjenikId ? "Stavke cjenika" : "Stavke bez cjenika"}</h2>
         <ItemsManager
           key={selectedCjenikId ?? NONE}
           venueId={venueId}
