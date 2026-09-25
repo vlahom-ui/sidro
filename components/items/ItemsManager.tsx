@@ -119,7 +119,11 @@ export function ItemsManager({
         setBulkError(error ?? "Postavljanje sidrene cijene nije uspjelo.");
         return;
       }
-      setBulkMessage(`Sidrena cijena postavljena za ${data.updated} stavki.`);
+      setBulkMessage(
+        data.updated > 0
+          ? `Sidrena cijena postavljena za ${data.updated} ${data.updated === 1 ? "stavku" : "stavki"}.`
+          : "Sve stavke već imaju sidrenu cijenu — nema promjena."
+      );
       router.refresh();
       setItems((prev) => prev.map((i) => (i.sidrena_cijena === null ? { ...i, sidrena_cijena: i.cijena } : i)));
     } finally {
@@ -190,6 +194,8 @@ export function ItemsManager({
     }
   }
 
+  const itemsMissingAnchor = items.filter((i) => i.sidrena_cijena === null).length;
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2 items-center">
@@ -206,16 +212,31 @@ export function ItemsManager({
             </button>
           </>
         )}
-        <button
-          onClick={handleSetAnchor}
-          disabled={bulkLoading}
-          className="rounded px-4 py-2 border border-navy/30 font-bold disabled:opacity-50"
-        >
-          {bulkLoading ? "..." : "Postavi sidrenu cijenu = trenutnu (za prazne)"}
-        </button>
+        {/* Gumb se prikazuje samo dok postoji barem jedna stavka bez sidrene
+            cijene — nema smisla nuditi radnju koja nema na što djelovati, a
+            broj u nazivu unaprijed najavljuje opseg radnje prije klika. */}
+        {itemsMissingAnchor > 0 && (
+          <button
+            onClick={handleSetAnchor}
+            disabled={bulkLoading}
+            className="rounded px-4 py-2 border border-alert/50 text-alert font-bold disabled:opacity-50"
+          >
+            {bulkLoading
+              ? "Spremanje..."
+              : `Postavi sidrenu cijenu = trenutnu (${itemsMissingAnchor} ${itemsMissingAnchor === 1 ? "prazna" : "praznih"})`}
+          </button>
+        )}
       </div>
-      {bulkMessage && <p className="text-sm">{bulkMessage}</p>}
-      {bulkError && <p className="text-alert text-sm">{bulkError}</p>}
+      {bulkMessage && (
+        <div className="border border-navy/20 rounded px-4 py-3 bg-navy-light">
+          <p className="font-bold text-sm">✓ {bulkMessage}</p>
+        </div>
+      )}
+      {bulkError && (
+        <div className="border border-alert/40 rounded px-4 py-3">
+          <p className="font-bold text-sm text-alert">⚠ {bulkError}</p>
+        </div>
+      )}
 
       {adding && (
         <ItemForm

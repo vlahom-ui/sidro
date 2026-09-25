@@ -333,3 +333,14 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   jednog cjenika (npr. višestranični jelovnik) — nakon svakog spremanja
   forma za uvoz je odmah spremna za sljedeću datoteku, bez gubitka
   konteksta ili potrebe za ručnim potvrđivanjem popup dijaloga.
+- **Bolji UX za "Postavi sidrenu cijenu = trenutnu"** (`ItemsManager.tsx`)
+  — gumb se sad prikazuje SAMO dok postoji barem jedna stavka bez sidrene
+  cijene (`itemsMissingAnchor > 0`) — nema smisla nuditi radnju koja nema
+  na što djelovati. Naziv gumba unaprijed pokazuje broj praznih stavki
+  (npr. "...( 3 prazne)") da korisnik zna opseg prije klika, umjesto da to
+  sazna tek iz poruke nakon. Poruke nakon klika stilizirane kao istaknuti
+  paneli (✓ navy-light panel za uspjeh, ⚠ alert-obrubljeni panel za
+  grešku) umjesto gole rečenice, dosljedno stilu uvedenom za potvrdu uvoza.
+  Poruka za slučaj "sve stavke već imaju sidrenu cijenu" sad je eksplicitno
+  drugačija ("nema promjena") od slučaja "postavljeno za N stavki" —
+  ranije je oboje prolazilo kroz identičan generički tekst.
