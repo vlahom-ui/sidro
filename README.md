@@ -418,3 +418,27 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
   označava čim postoji BILO KOJI drugi ne-cijena redak dva iznad koji je
   teoretski mogao biti pravi naziv, čak i kad je algoritam u tom
   konkretnom slučaju ispravno pogodio (potvrđeno testom).
+- **Dio 3 foolproof brief: error-handling audit bulk akcija/brisanja**
+  — sustavan pregled (ne ad-hoc) svih bulk akcija, brisanja i grupiranih
+  usluga za isti standard (loading prije await, disabled gumb, vidljiva
+  greška, apiFetch svugdje umjesto raw fetch — potvrđeno grep-om da
+  nijedna `.tsx` komponenta ne zaobilazi apiFetch/apiUploadFile wrapper).
+  Dva stvarna nalaza i popravka:
+  - `ImportReview.tsx` — "Postavi cijenu" bulk akcija (u pregledu uvoza)
+    je tiho ne radila ništa za nevažeći unos (npr. "abc", "-5", "0") jer
+    gumb provjerava samo da polje nije prazno, ne da sadrži valjan broj.
+    Sad prikazuje "Cijena mora biti pozitivan broj." umjesto tihog no-opa.
+  - `ItemsManager.tsx` — brisanje pojedinačne stavke nije imalo `disabled`
+    stanje na gumbu dok DELETE zahtjev traje (za razliku od `CjeniciList`,
+    koji to već ispravno ima po retku) — dodan isti `deletingId` obrazac
+    radi dosljednosti i zaštite od dvostrukog klika tijekom zahtjeva.
+  Ostalo provjereno i potvrđeno već na standardu (bez izmjene):
+  `GroupedItemForm.tsx` (loading/error/disabled/odustani — sve ispravno),
+  `CjeniciList.tsx`, `ChangePasswordForm.tsx`, `LoginForm.tsx`,
+  `ForgotPasswordForm.tsx`, `ResetPasswordForm.tsx`.
+  **Značajan nalaz — nedostaju cijele funkcionalnosti, ne bug**: brisanje
+  objekta (venue) i brisanje korisničkog računa **ne postoje nigdje u
+  aplikaciji** — ni gumb, ni API ruta (`app/api/venues/[venue]/route.ts`
+  s DELETE handlerom ne postoji uopće). Namjerno nisu izmišljeni/dodani u
+  ovoj rundi (destruktivna funkcionalnost je proizvodna odluka, ne
+  "popravak greške u postojećem kodu") — čeka eksplicitan zahtjev.

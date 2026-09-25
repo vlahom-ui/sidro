@@ -54,7 +54,14 @@ export function ImportReview({
 
   function applyBulkCijena() {
     const value = Number(bulkCijena.replace(",", "."));
-    if (!Number.isFinite(value) || value <= 0) return;
+    if (!Number.isFinite(value) || value <= 0) {
+      // Gumb je omogućen čim polje nije prazno (namjerno — provjera dok
+      // korisnik tipka bi smetala), pa nevažeći unos (npr. "abc", "-5",
+      // "0") mora dati vidljivu poruku umjesto tihog no-opa.
+      setError("Cijena mora biti pozitivan broj.");
+      return;
+    }
+    setError(null);
     setRows((prev) => prev.map((r) => (r.include ? { ...r, cijena: value } : r)));
     setBulkCijena("");
   }

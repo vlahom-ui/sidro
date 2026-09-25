@@ -68,6 +68,7 @@ export function ItemsManager({
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkMessage, setBulkMessage] = useState<string | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function handleCreate(values: ItemFormValues) {
     const { ok, data, error } = await apiFetch<{ item: Item }>(`/api/venues/${venueId}/items`, {
@@ -97,13 +98,18 @@ export function ItemsManager({
     if (!confirm("Obrisati ovu stavku?")) return;
     setBulkMessage(null);
     setBulkError(null);
-    const { ok, error } = await apiFetch(`/api/items/${itemId}`, { method: "DELETE" });
-    if (!ok) {
-      setBulkError(error ?? "Brisanje nije uspjelo.");
-      return;
+    setDeletingId(itemId);
+    try {
+      const { ok, error } = await apiFetch(`/api/items/${itemId}`, { method: "DELETE" });
+      if (!ok) {
+        setBulkError(error ?? "Brisanje nije uspjelo.");
+        return;
+      }
+      setItems((prev) => prev.filter((i) => i.id !== itemId));
+      router.refresh();
+    } finally {
+      setDeletingId(null);
     }
-    setItems((prev) => prev.filter((i) => i.id !== itemId));
-    router.refresh();
   }
 
   async function handleSetAnchor() {
@@ -171,11 +177,19 @@ export function ItemsManager({
           </div>
         </div>
         <div className="flex gap-3 text-sm">
-          <button onClick={() => setEditingId(item.id)} className="text-slate underline">
+          <button
+            onClick={() => setEditingId(item.id)}
+            disabled={deletingId === item.id}
+            className="text-slate underline disabled:opacity-50"
+          >
             Uredi
           </button>
-          <button onClick={() => handleDelete(item.id)} className="text-alert underline">
-            Obriši
+          <button
+            onClick={() => handleDelete(item.id)}
+            disabled={deletingId === item.id}
+            className="text-alert underline disabled:opacity-50"
+          >
+            {deletingId === item.id ? "Brisanje..." : "Obriši"}
           </button>
         </div>
       </div>
