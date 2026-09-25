@@ -9,7 +9,7 @@ export async function assertVenueOwner(
 ) {
   const { data: venue } = await supabase
     .from("venues")
-    .select("id, owner_user_id, slug, naziv, oblik_objekta, adresa, default_tip, status")
+    .select("id, owner_user_id, slug, naziv, oblik_objekta, adresa, ulica, kucni_broj, grad, default_tip, status")
     .eq("id", venueId)
     .maybeSingle();
 

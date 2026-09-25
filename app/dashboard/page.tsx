@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { NewVenueForm } from "@/components/NewVenueForm";
+import { formatVenueAddress } from "@/lib/formatAddress";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -43,7 +44,7 @@ export default async function DashboardPage() {
                       {v.status === "published" ? "objavljeno" : "Neobjavljeno"}
                     </span>
                   </div>
-                  <span className="text-sm opacity-70">{v.adresa}</span>
+                  <span className="text-sm opacity-70">{formatVenueAddress(v)}</span>
                 </Link>
               </li>
             ))}

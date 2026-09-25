@@ -5,6 +5,7 @@ import { assertVenueOwner } from "@/lib/ownership";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { logAudit } from "@/lib/audit";
 import { buildFileName, GENERATED_FILENAME_RE } from "@/lib/generate/filename";
+import { formatVenueAddress } from "@/lib/formatAddress";
 import {
   buildProizvodiCsv,
   buildProizvodiXml,
@@ -88,7 +89,7 @@ export const POST = withErrorHandling(async (
       const versionNumber = (previous?.version_number ?? 0) + 1;
       const { fileName, warnings } = buildFileName({
         oblikObjekta: venue.oblik_objekta,
-        adresa: venue.adresa,
+        adresa: formatVenueAddress(venue),
         oznakaObjekta,
         versionNumber,
         extension: format,

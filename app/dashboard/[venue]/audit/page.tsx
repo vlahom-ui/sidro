@@ -5,6 +5,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 
 const ACTION_LABELS: Record<string, string> = {
   venue_create: "Objekt stvoren",
+  venue_address_update: "Adresa ažurirana",
   venue_publish: "Cjenik objavljen",
   venue_unpublish: "Objava povučena",
   import_upload: "Uvoz datoteke",

@@ -1,4 +1,5 @@
 import type { Database } from "@/lib/database.types";
+import { formatVenueAddress } from "@/lib/formatAddress";
 
 type Venue = Database["public"]["Tables"]["venues"]["Row"];
 type Item = Database["public"]["Tables"]["items"]["Row"];
@@ -96,7 +97,7 @@ export function buildJsonLd(venue: Venue, items: Item[], groups: ItemGroup[] = [
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
     name: venue.naziv,
-    address: venue.adresa,
+    address: formatVenueAddress(venue),
     ...(venue.oib ? { taxID: venue.oib } : {}),
     makesOffer: [...groupEntities, ...ungroupedEntities],
   };

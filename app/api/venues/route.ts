@@ -9,7 +9,9 @@ import { withErrorHandling } from "@/lib/apiRoute";
 const bodySchema = z.object({
   naziv: z.string().min(1).max(200),
   oblikObjekta: z.string().min(1).max(100),
-  adresa: z.string().min(1).max(300),
+  ulica: z.string().min(1).max(150),
+  kucniBroj: z.string().min(1).max(20),
+  grad: z.string().min(1).max(100),
   oib: z.string().max(20).optional().nullable(),
   defaultTip: z.enum(["proizvod", "usluga"]).optional().nullable(),
 });
@@ -30,7 +32,12 @@ export const POST = withErrorHandling(async (request: Request) => {
     return NextResponse.json({ error: "Nevažeći podaci." }, { status: 400 });
   }
 
-  const { naziv, oblikObjekta, adresa, oib, defaultTip } = parsed.data;
+  const { naziv, oblikObjekta, ulica, kucniBroj, grad, oib, defaultTip } = parsed.data;
+  // adresa (stari slobodni tekst) i dalje postoji radi svih postojećih
+  // mjesta u kodu koja ga čitaju kao siguran fallback — za nove objekte
+  // sastavljen je izravno iz strukturiranih polja, isti format kao prikaz
+  // ("Ulica Kućni broj, Grad" — vidi lib/formatAddress.ts).
+  const adresa = `${ulica} ${kucniBroj}, ${grad}`;
 
   const admin = createAdminClient();
   const baseSlug = slugify(naziv) || "objekt";
@@ -49,6 +56,9 @@ export const POST = withErrorHandling(async (request: Request) => {
       slug,
       oblik_objekta: oblikObjekta,
       adresa,
+      ulica,
+      kucni_broj: kucniBroj,
+      grad,
       oib: oib || null,
       status: "draft",
       default_tip: defaultTip ?? null,

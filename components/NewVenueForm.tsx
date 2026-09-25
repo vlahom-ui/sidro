@@ -22,7 +22,9 @@ export function NewVenueForm() {
   const [open, setOpen] = useState(false);
   const [naziv, setNaziv] = useState("");
   const [oblikObjekta, setOblikObjekta] = useState(OBLICI_OBJEKTA[0]);
-  const [adresa, setAdresa] = useState("");
+  const [ulica, setUlica] = useState("");
+  const [kucniBroj, setKucniBroj] = useState("");
+  const [grad, setGrad] = useState("");
   const [oib, setOib] = useState("");
   const [defaultTip, setDefaultTip] = useState<ItemTip>("usluga");
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export function NewVenueForm() {
       const { ok, data, error: apiError } = await apiFetch<{ venue: Venue }>("/api/venues", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ naziv, oblikObjekta, adresa, oib: oib || null, defaultTip }),
+        body: JSON.stringify({ naziv, oblikObjekta, ulica, kucniBroj, grad, oib: oib || null, defaultTip }),
       });
 
       if (!ok || !data) {
@@ -91,17 +93,46 @@ export function NewVenueForm() {
           ))}
         </select>
       </div>
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <label className="block text-sm font-bold mb-1" htmlFor="ulica">
+            Ulica
+          </label>
+          <input
+            id="ulica"
+            required
+            value={ulica}
+            onChange={(e) => setUlica(e.target.value)}
+            className="w-full border border-navy/30 rounded px-3 py-2 bg-transparent"
+          />
+        </div>
+        <div className="w-24">
+          <label className="block text-sm font-bold mb-1" htmlFor="kucni-broj">
+            Kućni broj
+          </label>
+          <input
+            id="kucni-broj"
+            required
+            value={kucniBroj}
+            onChange={(e) => setKucniBroj(e.target.value)}
+            className="w-full border border-navy/30 rounded px-3 py-2 bg-transparent"
+          />
+        </div>
+      </div>
       <div>
-        <label className="block text-sm font-bold mb-1" htmlFor="adresa">
-          Adresa
+        <label className="block text-sm font-bold mb-1" htmlFor="grad">
+          Grad
         </label>
         <input
-          id="adresa"
+          id="grad"
           required
-          value={adresa}
-          onChange={(e) => setAdresa(e.target.value)}
+          value={grad}
+          onChange={(e) => setGrad(e.target.value)}
           className="w-full border border-navy/30 rounded px-3 py-2 bg-transparent"
         />
+        <p className="text-xs opacity-60 mt-1">
+          Ista ulica postoji u više hrvatskih gradova — grad je dio propisanog naziva datoteke.
+        </p>
       </div>
       <div>
         <label className="block text-sm font-bold mb-1" htmlFor="oib">

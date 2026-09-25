@@ -746,3 +746,78 @@ sidroapp.com. Potpuno neovisan od `vlahom-ui/nextjs-boilerplate` / dubrovnikgast
     na objektu "test" u pregledniku (70 postojećih stavki sad bi trebale
     postati vidljive/uredive) čeka korisnikovu provjeru. Podaci na tom
     objektu namjerno NISU dirani — samo UI koji ih prikazuje.
+- **Strukturirana adresa (ulica/kućni broj/grad) + grad u nazivu
+  datoteke** — dosad jedno slobodno-tekstualno polje `adresa` bez grada,
+  premalo precizno za nedvosmislenu identifikaciju objekta (ista ulica
+  postoji u više hrvatskih gradova).
+  - **Shema**: nova migracija `supabase/migrations/
+    0016_venue_structured_address.sql`, primijenjena preko Supabase MCP-a
+    — `venues.ulica`, `venues.kucni_broj`, `venues.grad`, sve `text`
+    nullable. Stari `adresa` stupac NIJE dirnut (ostaje `not null`,
+    i dalje se popunjava — vidi niže) niti obrisan. Namjerno bez
+    `postanski_broj` stupca — potvrđeno upitom na `information_schema.
+    columns` da ne postoji nigdje u shemi.
+  - **`lib/formatAddress.ts`** (novi) — jedina istina za "koju adresu
+    prikazati/koristiti": `formatVenueAddress(venue)` vraća `"Ulica Kućni
+    broj, Grad"` kad su sva tri strukturirana polja popunjena, inače stari
+    `adresa` tekst (bez ikakvog nagađanja/rastavljanja starog teksta —
+    isti princip "ne nagađaj" kao i kod ranijih sličnih odluka u ovom
+    projektu). `hasCompleteStructuredAddress(venue)` za UI provjere.
+    Korišteno na SVIH pet mjesta koja su prije čitala `venue.adresa`
+    izravno: `app/dashboard/[venue]/page.tsx`, `app/dashboard/page.tsx`
+    (popis objekata), `app/c/[slug]/page.tsx` (javna stranica),
+    `lib/generate/schemaOrg.ts` (Schema.org JSON-LD), i
+    `app/api/venues/[venue]/generate/route.ts` (izvor za segment naziva
+    datoteke — `lib/generate/filename.ts` NIJE mijenjan uopće: interpunkcija
+    poput zareza u `"Ulica Broj, Grad"` se ionako uklanja u postojećoj
+    normalizaciji, pa je dovoljno promijeniti ŠTO se šalje kao `adresa`
+    parametar, ne kako se normalizira).
+  - **Forma "Stvori objekt"** (`NewVenueForm.tsx`, `POST /api/venues`) —
+    jedno polje "Adresa" zamijenjeno s tri odvojena, sva obavezna: Ulica,
+    Kućni broj, Grad. Ruta više NE prima `adresa` s klijenta — sastavlja
+    ga sama server-side iz tri polja (`\`${ulica} ${kucniBroj}, ${grad}\``)
+    radi jednog mjesta istine za format, i sprema u stari `adresa` stupac
+    ISTOVREMENO s novim poljima (NOT NULL ograničenje i dalje zadovoljeno,
+    svi postojeći kod-putevi koji čitaju `adresa` izravno nastavljaju
+    raditi bez izmjene).
+  - **Uređivanje adrese na postojećem objektu** (`components/
+    EditAddressForm.tsx`, novi; `PATCH /api/venues/[venue]`, novi handler)
+    — dosad NIJE postojala nikakva mogućnost uređivanja objekta nakon
+    stvaranja (samo create/delete) — ova značajka je zahtijevala prvi
+    takav put. Na `/dashboard/{venue}`, kompaktan prikaz trenutne adrese
+    (`formatVenueAddress`) s "Uredi adresu" linkom koji otvara formu s tri
+    polja (isti collapse/expand obrazac kao `DeleteAccountForm`). Ako
+    strukturirana polja nisu potpuna, uz link se prikazuje nenametljiva
+    napomena "Adresa nije potpuna — dodajte grad za precizniji naziv
+    datoteke" — informativno, NE blokira generiranje ni objavu. Spremanje
+    ažurira i stari `adresa` stupac istovremeno (isti razlog kao gore —
+    jedan izvor istine za sve preostale čitatelje). Audit zapis
+    `venue_address_update` dodan u `ACTION_LABELS` na stranici loga.
+  - **Test — DB-level i pure-function, oboje preko stvarnog koda**:
+    1. `npx tsx` na `lib/formatAddress.ts` + `lib/generate/filename.ts`
+       izravno (14/14 testova): novi objekt sa sva tri polja → generirani
+       filename TOČNO odgovara brief primjeru
+       (`RESTORAN_DANTEALIGHIERI2DUBROVNIK_003_0002_20260924_1947.csv`,
+       bajt-za-bajt usporedba, ne samo "sadrži"); postojeći objekt bez
+       novih polja → fallback na stari `adresa`, filename radi identično
+       kao danas, prolazi regex validaciju; DJELOMIČNO popunjena polja
+       (npr. samo ulica+broj, bez grada) → i dalje koristi stari `adresa`
+       cijeli (ne miješa napola-strukturirano s tekstom); prijelaz
+       prije/nakon popunjavanja potvrđen eksplicitno.
+    2. Supabase MCP, sintetički venue: kreiran objekt BEZ strukturiranih
+       polja (kao stari objekt), pokrenut točan `UPDATE` iz PATCH rute —
+       potvrđeno da su `ulica`/`kucni_broj`/`grad`/`adresa` svi ispravno
+       postavljeni nakon. `information_schema.columns` upit potvrdio da
+       `postanski_broj` ne postoji nigdje u `venues` tablici. Test podaci
+       obrisani nakon.
+    3. Objekt "test" korišten kao referenca u ranijem nalazu u ovoj rundi
+       više ne postoji (korisnik ga je u međuvremenu obrisao) — nije bilo
+       moguće provjeriti da NJEGOVA stvarna stara `adresa` nastavlja
+       raditi bez grada, ali isti scenarij je pokriven sintetičkim testom
+       #1 iznad (fallback slučaj) identičnom logikom.
+  - `npm run typecheck` i `npm run build` prolaze čisto.
+  - **Nije testirano uživo**: stvaran unos kroz formu "Stvori objekt" (3
+    nova polja), stvaran klik na "Uredi adresu" na postojećem objektu,
+    stvaran izgled napomene o nepotpunoj adresi u pregledniku, stvaran
+    prikaz "Ulica Broj, Grad" na javnoj `/c/{slug}` stranici — sve čeka
+    korisnikovu live provjeru.

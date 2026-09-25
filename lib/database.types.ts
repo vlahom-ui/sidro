@@ -18,6 +18,9 @@ export interface Database {
           slug: string;
           oblik_objekta: string;
           adresa: string;
+          ulica: string | null;
+          kucni_broj: string | null;
+          grad: string | null;
           oib: string | null;
           status: VenueStatus;
           default_tip: ItemTip | null;
@@ -30,6 +33,9 @@ export interface Database {
           slug: string;
           oblik_objekta: string;
           adresa: string;
+          ulica?: string | null;
+          kucni_broj?: string | null;
+          grad?: string | null;
           oib?: string | null;
           status?: VenueStatus;
           default_tip?: ItemTip | null;

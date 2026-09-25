@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { buildJsonLd } from "@/lib/generate/schemaOrg";
+import { formatVenueAddress } from "@/lib/formatAddress";
 import type { Database } from "@/lib/database.types";
 
 type Item = Database["public"]["Tables"]["items"]["Row"];
@@ -96,7 +97,7 @@ export default async function PublicVenuePage({
         <header className="mb-8">
           <p className="text-sm lowercase font-bold text-slate mb-1">sidro</p>
           <h1 className="text-2xl font-bold">{venue.naziv}</h1>
-          <p className="text-sm opacity-70">{venue.adresa}</p>
+          <p className="text-sm opacity-70">{formatVenueAddress(venue)}</p>
         </header>
 
         {tipRows.length > 0 && (

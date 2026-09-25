@@ -7,6 +7,7 @@ import { VenueActions } from "@/components/VenueActions";
 import { CjeniciList } from "@/components/items/CjeniciList";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { PublishChecklist, type PublishStep } from "@/components/PublishChecklist";
+import { EditAddressForm } from "@/components/EditAddressForm";
 
 const TIP_LABEL_GENITIVE: Record<string, string> = { proizvod: "proizvoda", usluga: "usluga" };
 
@@ -150,7 +151,7 @@ export default async function VenueDetailPage({
             {venue.status === "published" ? "objavljeno" : "Status: neobjavljeno"}
           </span>
         </div>
-        <p className="text-sm opacity-70 mb-1">{venue.adresa}</p>
+        <EditAddressForm venueId={venue.id} adresa={venue.adresa} ulica={venue.ulica} kucniBroj={venue.kucni_broj} grad={venue.grad} />
         <p className="text-sm opacity-70 mb-6">
           Javna stranica:{" "}
           <a href={publicUrl} className="text-slate underline">
